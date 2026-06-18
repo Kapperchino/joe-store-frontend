@@ -1,15 +1,13 @@
-import { env } from '$env/dynamic/public';
+import { env } from '$env/dynamic/private';
 import { createServerClient } from '@supabase/ssr';
 import type { Handle } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	const supabaseUrl = env.PUBLIC_SUPABASE_URL;
-	const supabasePublishableKey = env.PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+	const supabaseUrl = env.SUPABASE_URL;
+	const supabasePublishableKey = env.SUPABASE_PUBLISHABLE_KEY;
 
 	if (!supabaseUrl || !supabasePublishableKey) {
-		throw new Error(
-			'PUBLIC_SUPABASE_URL and PUBLIC_SUPABASE_PUBLISHABLE_KEY must be configured.'
-		);
+		throw new Error('SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY must be configured.');
 	}
 
 	const authHeaders = new Headers();
