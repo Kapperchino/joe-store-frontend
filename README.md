@@ -20,6 +20,13 @@ npx sv@0.16.1 create --template minimal --types ts --add eslint mdsvex mcp="ide:
 
 ## Developing
 
+Copy `.env.example` to `.env` and add the Project URL and publishable key from your
+Supabase project's Connect dialog. In Supabase Auth:
+
+- Enable the Google and GitHub providers.
+- Add `http://localhost:5173/auth/callback` to the redirect URL allow list for local development.
+- Add the corresponding `/auth/callback` URL for each deployed environment.
+
 Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
 ```sh

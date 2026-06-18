@@ -31,6 +31,13 @@ export default defineConfig(
 		}
 	},
 	{
+		files: ['src/lib/components/ui/button/button.svelte'],
+		rules: {
+			// The reusable button accepts both external URLs and app routes, so resolve() is not always valid.
+			'svelte/no-navigation-without-resolve': 'off'
+		}
+	},
+	{
 		// Override or add rule settings here, such as:
 		// 'svelte/button-has-type': 'error'
 		rules: {}
