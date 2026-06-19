@@ -24,8 +24,12 @@ Copy `.env.example` to `.env` and add the Project URL and publishable key from y
 Supabase project's Connect dialog. In Supabase Auth:
 
 - Enable the Google and GitHub providers.
-- Add `http://localhost:5173/auth/callback` to the redirect URL allow list for local development.
-- Add the corresponding `/auth/callback` URL for each deployed environment.
+- Add `http://localhost:5173/login` to the redirect URL allow list for local development.
+- Add the corresponding `/login` URL for each deployed environment.
+
+The browser login stores the Supabase session in local storage and mirrors the current tokens under
+`joe-store.auth.access-token` and `joe-store.auth.refresh-token`. Use the token getters or
+`withStoredAccessToken()` from `src/lib/auth.ts` when calling the Joe Store API from the browser.
 
 Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
