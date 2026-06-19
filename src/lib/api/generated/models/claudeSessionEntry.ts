@@ -9,8 +9,10 @@ import type { ClaudeSessionAttachment } from './claudeSessionAttachment.ts';
 import type { ClaudeSessionEntrypoint } from './claudeSessionEntrypoint.ts';
 import type { ClaudeSessionFileHistorySnapshot } from './claudeSessionFileHistorySnapshot.ts';
 import type { ClaudeSessionMode } from './claudeSessionMode.ts';
+import type { ClaudeSessionOrigin } from './claudeSessionOrigin.ts';
 import type { ClaudeSessionPermissionMode } from './claudeSessionPermissionMode.ts';
 import type { ClaudeSessionPromptSource } from './claudeSessionPromptSource.ts';
+import type { ClaudeSessionQueueOperationType } from './claudeSessionQueueOperationType.ts';
 import type { ClaudeSessionSystemSubtype } from './claudeSessionSystemSubtype.ts';
 import type { ClaudeSessionToolUseResult } from './claudeSessionToolUseResult.ts';
 import type { ClaudeSessionUserMessage } from './claudeSessionUserMessage.ts';
@@ -33,8 +35,13 @@ export type ClaudeSessionEntry = {
   cwd: string;
   entrypoint: ClaudeSessionEntrypoint;
   gitBranch: string;
+  /** @nullable */
+  interruptedMessageId?: string | null;
+  /** @nullable */
+  isMeta?: boolean | null;
   isSidechain: boolean;
   message: ClaudeSessionUserMessage;
+  origin?: null | ClaudeSessionOrigin;
   /** @nullable */
   parentUuid?: string | null;
   permissionMode?: null | ClaudeSessionPermissionMode;
@@ -53,10 +60,13 @@ export type ClaudeSessionEntry = {
   cwd: string;
   entrypoint: ClaudeSessionEntrypoint;
   gitBranch: string;
+  /** @nullable */
+  isApiErrorMessage?: boolean | null;
   isSidechain: boolean;
   message: ClaudeSessionAssistantMessage;
   parentUuid: string;
-  requestId: string;
+  /** @nullable */
+  requestId?: string | null;
   sessionId: string;
   timestamp: string;
   type: 'assistant';
@@ -81,7 +91,8 @@ export type ClaudeSessionEntry = {
   sessionId: string;
   type: 'ai-title';
 } | {
-  lastPrompt: string;
+  /** @nullable */
+  lastPrompt?: string | null;
   leafUuid: string;
   sessionId: string;
   type: 'last-prompt';
@@ -103,4 +114,11 @@ export type ClaudeSessionEntry = {
   userType: ClaudeSessionUserType;
   uuid: string;
   version: string;
+} | {
+  /** @nullable */
+  content?: string | null;
+  operation: ClaudeSessionQueueOperationType;
+  sessionId: string;
+  timestamp: string;
+  type: 'queue-operation';
 };

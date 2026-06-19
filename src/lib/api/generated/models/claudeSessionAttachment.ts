@@ -32,4 +32,12 @@ export type ClaudeSessionAttachment = {
   /** @minimum 0 */
   itemCount: number;
   type: 'task_reminder';
+} | {
+  filename: string;
+  snippet: string;
+  type: 'edited_text_file';
+} | {
+  commandMode: string;
+  prompt: string;
+  type: 'queued_command';
 };

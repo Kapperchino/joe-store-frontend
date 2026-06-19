@@ -11,4 +11,5 @@ export type ClaudeSessionStopReason = typeof ClaudeSessionStopReason[keyof typeo
 export const ClaudeSessionStopReason = {
   tool_use: 'tool_use',
   end_turn: 'end_turn',
+  stop_sequence: 'stop_sequence',
 } as const;

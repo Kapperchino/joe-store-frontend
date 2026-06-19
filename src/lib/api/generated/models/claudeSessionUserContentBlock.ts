@@ -12,4 +12,7 @@ export type ClaudeSessionUserContentBlock = {
   is_error?: boolean | null;
   tool_use_id: string;
   type: 'tool_result';
+} | {
+  text: string;
+  type: 'text';
 };

@@ -6,6 +6,8 @@
  */
 
 export interface ClaudeSessionBashToolResult {
+  /** @nullable */
+  backgroundTaskId?: string | null;
   interrupted: boolean;
   isImage: boolean;
   noOutputExpected: boolean;

@@ -5,7 +5,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ClaudeSessionToolReference = {
-  tool_name: string;
-  type: 'tool_reference';
-};
+export type ClaudeSessionAskUserQuestionResultAnswers = {[key: string]: string};

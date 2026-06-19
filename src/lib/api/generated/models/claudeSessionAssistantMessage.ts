@@ -13,7 +13,9 @@ import type { ClaudeSessionUsage } from './claudeSessionUsage.ts';
 import type { Role } from './role.ts';
 
 export interface ClaudeSessionAssistantMessage {
+  container?: unknown;
   content: ClaudeSessionAssistantContentBlock[];
+  context_management?: unknown;
   diagnostics?: null | ClaudeSessionDiagnostics;
   id: string;
   model: string;

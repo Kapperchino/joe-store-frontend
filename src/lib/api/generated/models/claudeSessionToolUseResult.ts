@@ -4,11 +4,13 @@
  * joe-store
  * OpenAPI spec version: 0.1.0
  */
+import type { ClaudeSessionAskUserQuestionResult } from './claudeSessionAskUserQuestionResult.ts';
 import type { ClaudeSessionBashToolResult } from './claudeSessionBashToolResult.ts';
 import type { ClaudeSessionEditToolResult } from './claudeSessionEditToolResult.ts';
 import type { ClaudeSessionReadToolResult } from './claudeSessionReadToolResult.ts';
 import type { ClaudeSessionToolSearchToolResult } from './claudeSessionToolSearchToolResult.ts';
 import type { ClaudeSessionWebFetchToolResult } from './claudeSessionWebFetchToolResult.ts';
 import type { ClaudeSessionWebSearchToolResult } from './claudeSessionWebSearchToolResult.ts';
+import type { ClaudeSessionWriteToolResult } from './claudeSessionWriteToolResult.ts';
 
-export type ClaudeSessionToolUseResult = ClaudeSessionBashToolResult | ClaudeSessionWebFetchToolResult | ClaudeSessionToolSearchToolResult | ClaudeSessionWebSearchToolResult | ClaudeSessionReadToolResult | ClaudeSessionEditToolResult;
+export type ClaudeSessionToolUseResult = ClaudeSessionBashToolResult | ClaudeSessionWebFetchToolResult | ClaudeSessionToolSearchToolResult | ClaudeSessionWebSearchToolResult | ClaudeSessionReadToolResult | ClaudeSessionEditToolResult | ClaudeSessionWriteToolResult | ClaudeSessionAskUserQuestionResult | string;

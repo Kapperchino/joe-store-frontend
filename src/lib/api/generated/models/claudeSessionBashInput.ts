@@ -8,4 +8,11 @@
 export interface ClaudeSessionBashInput {
   command: string;
   description: string;
+  /** @nullable */
+  run_in_background?: boolean | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  timeout?: number | null;
 }

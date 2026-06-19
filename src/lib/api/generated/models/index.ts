@@ -6,6 +6,13 @@
  */
 
 export * from './cacheCreation.ts';
+export * from './claudeSessionAskUserQuestion.ts';
+export * from './claudeSessionAskUserQuestionAnnotation.ts';
+export * from './claudeSessionAskUserQuestionInput.ts';
+export * from './claudeSessionAskUserQuestionOption.ts';
+export * from './claudeSessionAskUserQuestionResult.ts';
+export * from './claudeSessionAskUserQuestionResultAnnotations.ts';
+export * from './claudeSessionAskUserQuestionResultAnswers.ts';
 export * from './claudeSessionAssistantContentBlock.ts';
 export * from './claudeSessionAssistantMessage.ts';
 export * from './claudeSessionAttachment.ts';
@@ -22,8 +29,12 @@ export * from './claudeSessionFileHistorySnapshotTrackedFileBackups.ts';
 export * from './claudeSessionInferenceGeo.ts';
 export * from './claudeSessionMessageType.ts';
 export * from './claudeSessionMode.ts';
+export * from './claudeSessionOrigin.ts';
+export * from './claudeSessionOriginalFile.ts';
+export * from './claudeSessionOriginKind.ts';
 export * from './claudeSessionPermissionMode.ts';
 export * from './claudeSessionPromptSource.ts';
+export * from './claudeSessionQueueOperationType.ts';
 export * from './claudeSessionReadFile.ts';
 export * from './claudeSessionReadInput.ts';
 export * from './claudeSessionReadResultType.ts';
@@ -59,6 +70,9 @@ export * from './claudeSessionWebFetchInput.ts';
 export * from './claudeSessionWebFetchToolResult.ts';
 export * from './claudeSessionWebSearchInput.ts';
 export * from './claudeSessionWebSearchToolResult.ts';
+export * from './claudeSessionWriteInput.ts';
+export * from './claudeSessionWriteResultType.ts';
+export * from './claudeSessionWriteToolResult.ts';
 export * from './errorResponse.ts';
 export * from './openAIEventMessage.ts';
 export * from './openAIPatchChange.ts';

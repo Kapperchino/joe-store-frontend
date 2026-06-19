@@ -6,7 +6,8 @@
  */
 
 export interface ClaudeSessionTrackedFileBackup {
-  backupFileName: string;
+  /** @nullable */
+  backupFileName?: string | null;
   backupTime: string;
   /** @minimum 0 */
   version: number;

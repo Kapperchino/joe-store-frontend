@@ -6,13 +6,13 @@
  */
 import type { ClaudeSessionOriginalFile } from './claudeSessionOriginalFile.ts';
 import type { ClaudeSessionStructuredPatch } from './claudeSessionStructuredPatch.ts';
+import type { ClaudeSessionWriteResultType } from './claudeSessionWriteResultType.ts';
 
-export interface ClaudeSessionEditToolResult {
+export interface ClaudeSessionWriteToolResult {
+  content: string;
   filePath: string;
-  newString: string;
-  oldString: string;
   originalFile?: null | ClaudeSessionOriginalFile;
-  replaceAll: boolean;
   structuredPatch: ClaudeSessionStructuredPatch[];
+  type: ClaudeSessionWriteResultType;
   userModified: boolean;
 }

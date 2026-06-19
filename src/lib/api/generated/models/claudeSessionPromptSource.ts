@@ -10,4 +10,5 @@ export type ClaudeSessionPromptSource = typeof ClaudeSessionPromptSource[keyof t
 
 export const ClaudeSessionPromptSource = {
   typed: 'typed',
+  system: 'system',
 } as const;

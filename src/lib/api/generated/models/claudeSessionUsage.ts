@@ -17,13 +17,14 @@ export interface ClaudeSessionUsage {
   cache_creation_input_tokens: number;
   /** @minimum 0 */
   cache_read_input_tokens: number;
-  inference_geo: ClaudeSessionInferenceGeo;
+  inference_geo?: null | ClaudeSessionInferenceGeo;
   /** @minimum 0 */
   input_tokens: number;
-  iterations: ClaudeSessionUsageIteration[];
+  /** @nullable */
+  iterations?: ClaudeSessionUsageIteration[] | null;
   /** @minimum 0 */
   output_tokens: number;
   server_tool_use: UsageServerToolUse;
-  service_tier: ClaudeSessionServiceTier;
-  speed: ClaudeSessionSpeed;
+  service_tier?: null | ClaudeSessionServiceTier;
+  speed?: null | ClaudeSessionSpeed;
 }

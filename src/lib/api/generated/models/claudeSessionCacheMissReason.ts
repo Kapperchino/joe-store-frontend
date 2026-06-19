@@ -9,4 +9,8 @@ export type ClaudeSessionCacheMissReason = {
   /** @minimum 0 */
   cache_missed_input_tokens: number;
   type: 'tools_changed';
+} | {
+  /** @minimum 0 */
+  cache_missed_input_tokens: number;
+  type: 'system_changed';
 };

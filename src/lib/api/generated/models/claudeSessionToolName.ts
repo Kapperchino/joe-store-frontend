@@ -15,4 +15,6 @@ export const ClaudeSessionToolName = {
   WebFetch: 'WebFetch',
   WebSearch: 'WebSearch',
   Edit: 'Edit',
+  Write: 'Write',
+  AskUserQuestion: 'AskUserQuestion',
 } as const;

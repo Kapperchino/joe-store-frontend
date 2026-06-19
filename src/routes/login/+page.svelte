@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import type { Pathname } from '$app/types';
 	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import StoreIcon from '@lucide/svelte/icons/store';
 	import * as Alert from '$lib/components/ui/alert';
@@ -58,7 +59,7 @@
 			}
 
 			if (session) {
-				void goto(resolve(data.next as Parameters<typeof resolve>[0]), { replaceState: true });
+				void goto(resolve(data.next as Pathname), { replaceState: true });
 			}
 		});
 
