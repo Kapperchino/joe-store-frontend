@@ -1,7 +1,7 @@
 import type { ClaudeSessionEntry, OpenAISessionEntry, Session } from '$lib/api';
 import { renderMarkdown } from './markdown.server';
 
-export type SessionRole = 'user' | 'assistant' | 'developer' | 'tool';
+export type SessionRole = 'user' | 'assistant' | 'tool';
 
 export interface ToolActivity {
 	label: string;
@@ -48,6 +48,21 @@ function titleFromText(text: string | undefined): string | undefined {
 	const normalized = text?.replace(/\s+/g, ' ').trim();
 	if (!normalized) return undefined;
 	return normalized.length > 80 ? `${normalized.slice(0, 77)}…` : normalized;
+}
+
+function stripOpenAIEnvironmentContext(text: string | undefined): string | undefined {
+	let candidate = text?.trim();
+	const environmentContext = /^\s*<environment_context>[\s\S]*?<\/environment_context>\s*/i;
+
+	while (candidate && environmentContext.test(candidate)) {
+		candidate = candidate.replace(environmentContext, '');
+	}
+
+	return candidate?.trim() || undefined;
+}
+
+function openAITitleFromText(text: string | undefined): string | undefined {
+	return titleFromText(stripOpenAIEnvironmentContext(text));
 }
 
 function range(timestamps: Array<string | undefined>) {
@@ -164,11 +179,13 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 		if (entry.type === 'response_item') {
 			const item = entry.payload;
 
-			if (item.type === 'message') {
-				const text = item.content
+			if (item.type === 'message' && item.role !== 'developer') {
+				const rawText = item.content
 					.map((part) => part.text)
 					.join('\n\n')
 					.trim();
+				const text =
+					item.role === 'user' ? stripOpenAIEnvironmentContext(rawText) : rawText || undefined;
 				if (text) {
 					messages.push({
 						id: `openai-${index}`,
@@ -208,14 +225,20 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 		if (!hasConversationItems && entry.type === 'event_msg') {
 			const event = entry.payload;
 			if (event.type === 'user_message' || event.type === 'agent_message') {
-				messages.push({
-					id: `openai-event-${index}`,
-					role: event.type === 'user_message' ? 'user' : 'assistant',
-					text: event.message,
-					html: renderMarkdown(event.message),
-					timestamp: entry.timestamp,
-					tools: []
-				});
+				const text =
+					event.type === 'user_message'
+						? stripOpenAIEnvironmentContext(event.message)
+						: event.message.trim() || undefined;
+				if (text) {
+					messages.push({
+						id: `openai-event-${index}`,
+						role: event.type === 'user_message' ? 'user' : 'assistant',
+						text,
+						html: renderMarkdown(text),
+						timestamp: entry.timestamp,
+						tools: []
+					});
+				}
 			}
 		}
 	});
@@ -228,7 +251,11 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 
 	return {
 		provider: 'openai',
-		title: titleFromText(messages.find((message) => message.role === 'user')?.text) ?? 'OpenAI session',
+		title:
+			messages
+				.filter((message) => message.role === 'user')
+				.map((message) => openAITitleFromText(message.text))
+				.find((title) => title !== undefined) ?? 'OpenAI session',
 		sessionIdentifier: meta?.id,
 		model: turn?.model,
 		cwd: meta?.cwd ?? turn?.cwd,

@@ -2,7 +2,6 @@
 	import { resolve } from '$app/paths';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import BotIcon from '@lucide/svelte/icons/bot';
-	import CodeXmlIcon from '@lucide/svelte/icons/code-xml';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import { Button } from '$lib/components/ui/button';
@@ -25,7 +24,6 @@
 
 	function roleLabel(role: (typeof data.session.messages)[number]['role']): string {
 		if (role === 'assistant') return 'Assistant';
-		if (role === 'developer') return 'Developer';
 		if (role === 'tool') return 'Tool activity';
 		return 'User';
 	}
@@ -113,8 +111,6 @@
 								<UserIcon class="size-4 text-muted-foreground" aria-hidden="true" />
 							{:else if message.role === 'assistant'}
 								<BotIcon class="size-4 text-muted-foreground" aria-hidden="true" />
-							{:else if message.role === 'developer'}
-								<CodeXmlIcon class="size-4 text-muted-foreground" aria-hidden="true" />
 							{:else}
 								<WrenchIcon class="size-4 text-muted-foreground" aria-hidden="true" />
 							{/if}
