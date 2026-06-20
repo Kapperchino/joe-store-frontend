@@ -68,11 +68,6 @@ export type getSessionResponse200 = {
   status: 200
 }
 
-export type getSessionResponse401 = {
-  data: ErrorResponse
-  status: 401
-}
-
 export type getSessionResponse500 = {
   data: ErrorResponse
   status: 500
@@ -81,7 +76,7 @@ export type getSessionResponse500 = {
 export type getSessionResponseSuccess = (getSessionResponse200) & {
   headers: Headers;
 };
-export type getSessionResponseError = (getSessionResponse401 | getSessionResponse500) & {
+export type getSessionResponseError = (getSessionResponse500) & {
   headers: Headers;
 };
 

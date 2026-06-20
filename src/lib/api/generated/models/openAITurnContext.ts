@@ -8,6 +8,8 @@
 export interface OpenAITurnContext {
   approval_policy: string;
   collaboration_mode: unknown;
+  /** @nullable */
+  comp_hash?: string | null;
   current_date: string;
   cwd: string;
   effort: string;

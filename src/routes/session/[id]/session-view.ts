@@ -1,4 +1,5 @@
 import type { ClaudeSessionEntry, OpenAISessionEntry, Session } from '$lib/api';
+import { renderMarkdown } from './markdown.server';
 
 export type SessionRole = 'user' | 'assistant' | 'developer' | 'tool';
 
@@ -12,6 +13,7 @@ export interface SessionMessageView {
 	id: string;
 	role: SessionRole;
 	text?: string;
+	html?: string;
 	timestamp?: string;
 	tools: ToolActivity[];
 }
@@ -92,6 +94,7 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 					id: entry.uuid || `claude-${index}`,
 					role: text ? 'user' : 'tool',
 					text,
+					html: text ? renderMarkdown(text) : undefined,
 					timestamp: entry.timestamp,
 					tools
 				});
@@ -113,6 +116,7 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 					id: entry.uuid || `claude-${index}`,
 					role: 'assistant',
 					text: text || undefined,
+					html: text ? renderMarkdown(text) : undefined,
 					timestamp: entry.timestamp,
 					tools
 				});
@@ -170,6 +174,7 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 						id: `openai-${index}`,
 						role: item.role,
 						text,
+						html: renderMarkdown(text),
 						timestamp: entry.timestamp,
 						tools: []
 					});
@@ -207,6 +212,7 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 					id: `openai-event-${index}`,
 					role: event.type === 'user_message' ? 'user' : 'assistant',
 					text: event.message,
+					html: renderMarkdown(event.message),
 					timestamp: entry.timestamp,
 					tools: []
 				});

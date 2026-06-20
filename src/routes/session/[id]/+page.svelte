@@ -7,6 +7,7 @@
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
+	import Markdown from '$lib/components/markdown.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -126,8 +127,8 @@
 						{/if}
 					</Card.Header>
 					<Card.Content class="flex flex-col gap-4">
-						{#if message.text}
-							<p class="whitespace-pre-wrap break-words leading-6">{message.text}</p>
+						{#if message.html}
+							<Markdown sanitizedHtml={message.html} />
 						{/if}
 
 						{#each message.tools as tool, index (`${message.id}-${index}`)}

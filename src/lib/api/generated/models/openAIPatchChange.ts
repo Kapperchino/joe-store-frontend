@@ -9,6 +9,9 @@ export type OpenAIPatchChange = {
   content: string;
   type: 'add';
 } | {
+  content: string;
+  type: 'delete';
+} | {
   /** @nullable */
   move_path?: string | null;
   type: 'update';

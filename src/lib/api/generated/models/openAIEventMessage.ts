@@ -7,6 +7,7 @@
 import type { OpenAIPatchChange } from './openAIPatchChange.ts';
 import type { OpenAIRateLimits } from './openAIRateLimits.ts';
 import type { OpenAITokenCountInfo } from './openAITokenCountInfo.ts';
+import type { WebSearchAction } from './webSearchAction.ts';
 
 export type OpenAIEventMessage = {
   memory_citation?: unknown;
@@ -58,4 +59,9 @@ export type OpenAIEventMessage = {
   success: boolean;
   turn_id: string;
   type: 'patch_apply_end';
+} | {
+  action: WebSearchAction;
+  call_id: string;
+  query: string;
+  type: 'web_search_end';
 };

@@ -5,36 +5,44 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OpenAIResponseContentPart } from './openAIResponseContentPart.ts';
+import type { OpenAIResponseItemMetadata } from './openAIResponseItemMetadata.ts';
 import type { OpenAIResponseRole } from './openAIResponseRole.ts';
+import type { OpenAIToolOutput } from './openAIToolOutput.ts';
 import type { SummaryTextContent } from './summaryTextContent.ts';
 
 export type OpenAIResponseItem = {
   content: OpenAIResponseContentPart[];
+  metadata?: null | OpenAIResponseItemMetadata;
   /** @nullable */
   phase?: string | null;
   role: OpenAIResponseRole;
   type: 'message';
 } | {
   encrypted_content: string;
+  metadata?: null | OpenAIResponseItemMetadata;
   summary: SummaryTextContent[];
   type: 'reasoning';
 } | {
   arguments: string;
   call_id: string;
+  metadata?: null | OpenAIResponseItemMetadata;
   name: string;
   type: 'function_call';
 } | {
   call_id: string;
-  output: string;
+  metadata?: null | OpenAIResponseItemMetadata;
+  output: OpenAIToolOutput;
   type: 'function_call_output';
 } | {
   call_id: string;
   input: string;
+  metadata?: null | OpenAIResponseItemMetadata;
   name: string;
   status: string;
   type: 'custom_tool_call';
 } | {
   call_id: string;
-  output: string;
+  metadata?: null | OpenAIResponseItemMetadata;
+  output: OpenAIToolOutput;
   type: 'custom_tool_call_output';
 };
