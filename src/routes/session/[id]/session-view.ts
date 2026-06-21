@@ -66,6 +66,37 @@ function openAITitleFromText(text: string | undefined): string | undefined {
 	return titleFromText(stripOpenAIEnvironmentContext(text));
 }
 
+// OpenAI tool output is either a plain string or content parts; flatten to text.
+function openAIOutputText(output: unknown): string {
+	if (typeof output === 'string') return output;
+	if (Array.isArray(output)) {
+		return output
+			.map((part) =>
+				part && typeof part === 'object' && 'text' in part
+					? String((part as { text: unknown }).text)
+					: ''
+			)
+			.join('\n');
+	}
+	return '';
+}
+
+// Heuristic: did a tool (notably apply_patch) report a failure? Used to avoid
+// presenting a diff for an edit that was never actually applied.
+function isFailureOutput(text: string): boolean {
+	const normalized = text.toLowerCase();
+	if (!normalized.trim()) return false;
+	return (
+		/(^|\n)\s*(error|fatal|traceback)\b/.test(normalized) ||
+		normalized.includes('failed to apply') ||
+		normalized.includes('patch does not apply') ||
+		normalized.includes('apply_patch:') ||
+		normalized.includes('no such file') ||
+		normalized.includes('command failed') ||
+		/exit code:?\s*[1-9]/.test(normalized)
+	);
+}
+
 function range(timestamps: Array<string | undefined>) {
 	const values = timestamps.filter((value): value is string => Boolean(value));
 	return { startedAt: values.at(0), endedAt: values.at(-1) };
@@ -264,17 +295,20 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 
 			if (item.type === 'function_call_output' || item.type === 'custom_tool_call_output') {
 				const existing = toolsById.get(item.call_id);
-				const output = formatDetail(item.output);
+				const text = openAIOutputText(item.output);
+				const output = formatDetail(text);
+				const isError = isFailureOutput(text);
 				if (existing) {
 					existing.output = output;
+					existing.isError = isError;
 				} else if (lastAssistant) {
-					lastAssistant.tools.push({ label: 'Tool result', output });
+					lastAssistant.tools.push({ label: 'Tool result', output, isError });
 				} else {
 					messages.push({
 						id: `${item.call_id}-output-${index}`,
 						role: 'tool',
 						timestamp: entry.timestamp,
-						tools: [{ label: 'Tool result', output }]
+						tools: [{ label: 'Tool result', output, isError }]
 					});
 				}
 			}
