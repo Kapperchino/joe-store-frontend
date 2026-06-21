@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import CheckIcon from '@lucide/svelte/icons/check';
 	import type { ToolActivity } from './session-view';
 	import { diffFromEdit, diffFromPatchSource, type DiffView } from './diff';
 
@@ -75,10 +76,12 @@
 		return entries.map(([key, value]) => `${key}: ${firstLine(stringify(value))}`).join(', ');
 	}
 
-	const preview = $derived(tool.input ? summarize(tool.input) : undefined);
+	const preview = $derived(
+		tool.questions?.length ? tool.questions[0].question : tool.input ? summarize(tool.input) : undefined
+	);
 </script>
 
-<details class="group" open={diff !== null}>
+<details class="group" open={diff !== null || (tool.questions?.length ?? 0) > 0}>
 	<summary
 		class="flex cursor-pointer list-none items-center gap-1.5 font-mono text-xs text-foreground"
 	>
@@ -98,7 +101,53 @@
 	</summary>
 
 	<div class="mt-2 ml-1.5 flex flex-col gap-3 border-l border-border pl-3">
-		{#if diff}
+		{#if tool.questions?.length}
+			{#each tool.questions as question, qIndex (qIndex)}
+				<div class="flex flex-col gap-2 font-sans">
+					{#if question.header}
+						<p class="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+							{question.header}
+						</p>
+					{/if}
+					<p class="text-sm font-medium text-foreground">{question.question}</p>
+					<div class="flex flex-col gap-1.5">
+						{#each question.options as option, oIndex (oIndex)}
+							<div
+								class="flex items-start gap-2 rounded-md border px-2.5 py-1.5 {option.selected
+									? 'border-green-500/60 bg-green-500/10'
+									: 'border-border'}"
+							>
+								<span class="flex size-4 shrink-0 items-center justify-center">
+									{#if option.selected}
+										<CheckIcon class="size-3.5 text-green-700 dark:text-green-400" />
+									{/if}
+								</span>
+								<div class="flex min-w-0 flex-col gap-0.5">
+									<span
+										class="text-xs font-medium {option.selected
+											? 'text-foreground'
+											: 'text-muted-foreground'}"
+									>
+										{option.label}
+										{#if option.selected}
+											<span class="text-green-700 dark:text-green-400">· chosen</span>
+										{/if}
+									</span>
+									{#if option.description}
+										<span class="text-xs text-muted-foreground">{option.description}</span>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
+					{#if question.answer && !question.options.some((option) => option.selected)}
+						<p class="text-xs text-muted-foreground">
+							Answer: <span class="text-foreground">{question.answer}</span>
+						</p>
+					{/if}
+				</div>
+			{/each}
+		{:else if diff}
 			{#each diff.files as file, fileIndex (fileIndex)}
 				<div class="flex flex-col gap-1.5">
 					<p class="flex flex-wrap items-center gap-1.5 font-mono text-xs">
@@ -139,7 +188,7 @@
 					class="overflow-x-auto whitespace-pre-wrap break-words text-xs leading-5"><code>{tool.input}</code></pre>
 			</div>
 		{/if}
-		{#if tool.output}
+		{#if tool.output && !tool.questions?.length}
 			<details class="group/output flex flex-col gap-1.5">
 				<summary
 					class="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"

@@ -3,11 +3,28 @@ import { renderMarkdown } from './markdown.server';
 
 export type SessionRole = 'user' | 'assistant' | 'tool';
 
+export interface QuestionOptionView {
+	label: string;
+	description?: string;
+	selected: boolean;
+}
+
+export interface QuestionView {
+	header?: string;
+	question: string;
+	multiSelect: boolean;
+	options: QuestionOptionView[];
+	answer?: string;
+}
+
 export interface ToolActivity {
 	label: string;
 	input?: string;
 	output?: string;
 	isError?: boolean;
+	// Structured AskUserQuestion view: the questions asked, their options, and
+	// which option(s) the user ended up choosing.
+	questions?: QuestionView[];
 }
 
 export interface SessionMessageView {
@@ -97,6 +114,51 @@ function isFailureOutput(text: string): boolean {
 	);
 }
 
+// AskUserQuestion input carries the questions and their selectable options.
+function buildQuestions(input: unknown): QuestionView[] | undefined {
+	if (!input || typeof input !== 'object') return undefined;
+	const questions = (input as { questions?: unknown }).questions;
+	if (!Array.isArray(questions) || questions.length === 0) return undefined;
+
+	return questions.map((raw) => {
+		const q = raw as Record<string, unknown>;
+		const options = Array.isArray(q.options)
+			? q.options.map((rawOption) => {
+					const option = rawOption as Record<string, unknown>;
+					return {
+						label: String(option.label ?? ''),
+						description: option.description ? String(option.description) : undefined,
+						selected: false
+					};
+				})
+			: [];
+		return {
+			header: typeof q.header === 'string' ? q.header : undefined,
+			question: String(q.question ?? ''),
+			multiSelect: Boolean(q.multiSelect),
+			options
+		};
+	});
+}
+
+// The user's choice lives in the tool result's `answers` map, keyed by the
+// question text; mark the matching option(s) selected and record the raw answer.
+function applyAnswers(questions: QuestionView[], result: unknown): void {
+	if (!result || typeof result !== 'object') return;
+	const answers = (result as { answers?: unknown }).answers;
+	if (!answers || typeof answers !== 'object') return;
+
+	for (const question of questions) {
+		const answer = (answers as Record<string, unknown>)[question.question];
+		if (typeof answer !== 'string') continue;
+		question.answer = answer;
+		const chosen = question.multiSelect ? answer.split(/,\s*/) : [answer];
+		for (const option of question.options) {
+			option.selected = chosen.includes(option.label);
+		}
+	}
+}
+
 function range(timestamps: Array<string | undefined>) {
 	const values = timestamps.filter((value): value is string => Boolean(value));
 	return { startedAt: values.at(0), endedAt: values.at(-1) };
@@ -138,6 +200,7 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 				if (existing) {
 					existing.output = output;
 					existing.isError = block.is_error ?? false;
+					if (existing.questions) applyAnswers(existing.questions, entry.toolUseResult);
 				} else {
 					orphanResults.push({
 						label: block.is_error ? 'Tool error' : 'Tool result',
@@ -186,6 +249,9 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 						label: String(block.name),
 						input: formatDetail(block.input)
 					};
+					if (block.name === 'AskUserQuestion') {
+						activity.questions = buildQuestions(block.input);
+					}
 					tools.push(activity);
 					if (block.id) toolsById.set(block.id, activity);
 				}

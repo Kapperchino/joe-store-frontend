@@ -12,6 +12,8 @@
 
 	let { data }: PageProps = $props();
 
+	let userOnly = $state(false);
+
 	const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
 		dateStyle: 'medium',
 		timeStyle: 'short'
@@ -86,8 +88,49 @@
 		<section aria-labelledby="conversation-heading">
 			<h2 id="conversation-heading" class="sr-only">Conversation</h2>
 
+			<div class="flex items-center justify-end gap-1 pt-4">
+				<Button
+					variant={userOnly ? 'ghost' : 'secondary'}
+					size="sm"
+					aria-pressed={!userOnly}
+					onclick={() => (userOnly = false)}
+				>
+					All messages
+				</Button>
+				<Button
+					variant={userOnly ? 'secondary' : 'ghost'}
+					size="sm"
+					aria-pressed={userOnly}
+					onclick={() => (userOnly = true)}
+				>
+					User only
+				</Button>
+			</div>
+
 			{#each data.session.messages as message (message.id)}
-				<article class="border-b border-border py-8">
+				{@const collapsed = userOnly && message.role !== 'user'}
+				{#if collapsed}
+					<article class="flex items-center gap-2.5 border-b border-border py-2.5 text-muted-foreground">
+						<span class="flex size-5 shrink-0 items-center justify-center">
+							{#if message.role === 'assistant'}
+								{#if data.session.provider === 'openai'}
+									<OpenAIIcon class="size-3.5" />
+								{:else}
+									<ClaudeIcon class="size-3.5" />
+								{/if}
+							{:else}
+								<WrenchIcon class="size-3.5" aria-hidden="true" />
+							{/if}
+						</span>
+						<span class="min-w-0 flex-1 truncate text-sm">
+							{message.text?.replace(/\s+/g, ' ').trim() ||
+								(message.tools.length > 0
+									? `${message.tools.length} tool ${message.tools.length === 1 ? 'action' : 'actions'}`
+									: roleLabel(message.role))}
+						</span>
+					</article>
+				{:else}
+					<article class="border-b border-border py-8">
 					<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
 						<div class="flex items-center gap-2.5">
 							<span
@@ -128,6 +171,7 @@
 						{/if}
 					</div>
 				</article>
+				{/if}
 			{:else}
 				<p class="py-8 text-sm text-muted-foreground">
 					This session contains metadata, but no displayable messages or tool activity.
