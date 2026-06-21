@@ -27,13 +27,50 @@ export interface ToolActivity {
 	questions?: QuestionView[];
 }
 
+// A message is an ordered sequence of parts so that text and tool activity
+// render in the order they actually occurred (text → tool → text → tool),
+// rather than all prose first followed by a batch of tools.
+export type MessagePart =
+	| { kind: 'text'; text: string; html: string }
+	| { kind: 'tool'; tool: ToolActivity };
+
 export interface SessionMessageView {
 	id: string;
 	role: SessionRole;
-	text?: string;
-	html?: string;
 	timestamp?: string;
+	parts: MessagePart[];
+	// Derived from `parts` once the view is assembled; kept for the collapsed
+	// preview (title text + tool count) where ordering doesn't matter.
+	text?: string;
 	tools: ToolActivity[];
+}
+
+// Append a text block, merging into the trailing text part when one is already
+// there so consecutive prose stays a single markdown unit.
+function appendText(parts: MessagePart[], raw: string | undefined): void {
+	const text = raw?.trim();
+	if (!text) return;
+	const last = parts.at(-1);
+	if (last?.kind === 'text') {
+		last.text = `${last.text}\n\n${text}`;
+		last.html = renderMarkdown(last.text);
+	} else {
+		parts.push({ kind: 'text', text, html: renderMarkdown(text) });
+	}
+}
+
+// Collapse the ordered parts back down to the flat `text`/`tools` fields used by
+// the message preview.
+function finalizeMessage(message: SessionMessageView): SessionMessageView {
+	const textParts: string[] = [];
+	const tools: ToolActivity[] = [];
+	for (const part of message.parts) {
+		if (part.kind === 'text') textParts.push(part.text);
+		else tools.push(part.tool);
+	}
+	message.text = textParts.join('\n\n').trim() || undefined;
+	message.tools = tools;
+	return message;
 }
 
 export interface SessionView {
@@ -211,12 +248,13 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 			}
 
 			if (text) {
+				const parts: MessagePart[] = [];
+				appendText(parts, text);
 				messages.push({
 					id: entry.uuid || `claude-${index}`,
 					role: 'user',
-					text,
-					html: renderMarkdown(text),
 					timestamp: entry.timestamp,
+					parts,
 					tools: []
 				});
 				lastAssistant = undefined;
@@ -224,27 +262,27 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 
 			if (orphanResults.length > 0) {
 				if (lastAssistant) {
-					lastAssistant.tools.push(...orphanResults);
+					for (const tool of orphanResults) lastAssistant.parts.push({ kind: 'tool', tool });
 				} else {
 					messages.push({
 						id: entry.uuid || `claude-${index}`,
 						role: 'tool',
 						timestamp: entry.timestamp,
-						tools: orphanResults
+						parts: orphanResults.map((tool) => ({ kind: 'tool', tool })),
+						tools: []
 					});
 				}
 			}
 		}
 
 		if (entry.type === 'assistant') {
-			const text = entry.message.content
-				.filter((block) => block.type === 'text')
-				.map((block) => block.text)
-				.join('\n\n')
-				.trim();
-			const tools: ToolActivity[] = [];
+			// Walk the content blocks in order so text and tool calls keep their
+			// original sequence (text → tool → text → tool).
+			const parts: MessagePart[] = [];
 			for (const block of entry.message.content) {
-				if (block.type === 'tool_use') {
+				if (block.type === 'text') {
+					appendText(parts, block.text);
+				} else if (block.type === 'tool_use') {
 					const activity: ToolActivity = {
 						label: String(block.name),
 						input: formatDetail(block.input)
@@ -252,25 +290,26 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 					if (block.name === 'AskUserQuestion') {
 						activity.questions = buildQuestions(block.input);
 					}
-					tools.push(activity);
+					parts.push({ kind: 'tool', tool: activity });
 					if (block.id) toolsById.set(block.id, activity);
 				}
 			}
 
-			if (text || tools.length > 0) {
+			if (parts.length > 0) {
 				const message: SessionMessageView = {
 					id: entry.uuid || `claude-${index}`,
 					role: 'assistant',
-					text: text || undefined,
-					html: text ? renderMarkdown(text) : undefined,
 					timestamp: entry.timestamp,
-					tools
+					parts,
+					tools: []
 				};
 				messages.push(message);
 				lastAssistant = message;
 			}
 		}
 	});
+
+	messages.forEach(finalizeMessage);
 
 	const titleEntry = data.find((entry) => entry.type === 'ai-title');
 	const lastPromptEntry = data.find((entry) => entry.type === 'last-prompt');
@@ -325,12 +364,13 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 				const text =
 					item.role === 'user' ? stripOpenAIEnvironmentContext(rawText) : rawText || undefined;
 				if (text) {
+					const parts: MessagePart[] = [];
+					appendText(parts, text);
 					const message: SessionMessageView = {
 						id: `openai-${index}`,
 						role: item.role,
-						text,
-						html: renderMarkdown(text),
 						timestamp: entry.timestamp,
+						parts,
 						tools: []
 					};
 					messages.push(message);
@@ -352,11 +392,12 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 						id: item.call_id || `openai-${index}`,
 						role: 'assistant',
 						timestamp: entry.timestamp,
+						parts: [],
 						tools: []
 					};
 					messages.push(lastAssistant);
 				}
-				lastAssistant.tools.push(activity);
+				lastAssistant.parts.push({ kind: 'tool', tool: activity });
 			}
 
 			if (item.type === 'function_call_output' || item.type === 'custom_tool_call_output') {
@@ -368,13 +409,14 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 					existing.output = output;
 					existing.isError = isError;
 				} else if (lastAssistant) {
-					lastAssistant.tools.push({ label: 'Tool result', output, isError });
+					lastAssistant.parts.push({ kind: 'tool', tool: { label: 'Tool result', output, isError } });
 				} else {
 					messages.push({
 						id: `${item.call_id}-output-${index}`,
 						role: 'tool',
 						timestamp: entry.timestamp,
-						tools: [{ label: 'Tool result', output, isError }]
+						parts: [{ kind: 'tool', tool: { label: 'Tool result', output, isError } }],
+						tools: []
 					});
 				}
 			}
@@ -388,12 +430,13 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 						? stripOpenAIEnvironmentContext(event.message)
 						: event.message.trim() || undefined;
 				if (text) {
+					const parts: MessagePart[] = [];
+					appendText(parts, text);
 					const message: SessionMessageView = {
 						id: `openai-event-${index}`,
 						role: event.type === 'user_message' ? 'user' : 'assistant',
-						text,
-						html: renderMarkdown(text),
 						timestamp: entry.timestamp,
+						parts,
 						tools: []
 					};
 					messages.push(message);
@@ -402,6 +445,8 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 			}
 		}
 	});
+
+	messages.forEach(finalizeMessage);
 
 	const metaEntry = data.find((entry) => entry.type === 'session_meta');
 	const turnEntry = data.find((entry) => entry.type === 'turn_context');
@@ -429,7 +474,8 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 
 // Collapse a whole agent turn into a single block: everything an assistant says
 // and does between two user messages — including multi-step tool round-trips that
-// arrive as separate entries — is merged so its tools list together in one reply.
+// arrive as separate entries — is merged. Parts are concatenated in arrival order
+// so the interleaving of text and tools is preserved across the merged entries.
 function mergeAgentTurns(messages: SessionMessageView[]): SessionMessageView[] {
 	const merged: SessionMessageView[] = [];
 
@@ -437,21 +483,18 @@ function mergeAgentTurns(messages: SessionMessageView[]): SessionMessageView[] {
 		const previous = merged.at(-1);
 
 		if (message.role !== 'user' && previous && previous.role !== 'user') {
-			previous.tools.push(...message.tools);
-			if (message.text) {
-				previous.text = previous.text ? `${previous.text}\n\n${message.text}` : message.text;
-			}
-			if (message.html) {
-				previous.html = previous.html ? `${previous.html}\n${message.html}` : message.html;
+			for (const part of message.parts) {
+				if (part.kind === 'text') appendText(previous.parts, part.text);
+				else previous.parts.push(part);
 			}
 			if (message.role === 'assistant') previous.role = 'assistant';
 			continue;
 		}
 
-		merged.push({ ...message, tools: [...message.tools] });
+		merged.push({ ...message, parts: [...message.parts] });
 	}
 
-	return merged;
+	return merged.map(finalizeMessage);
 }
 
 export function createSessionView(session: Session): SessionView {

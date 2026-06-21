@@ -12,9 +12,30 @@
 	import ClaudeIcon from './claude-icon.svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import type { PageProps } from './$types';
+	import type { MessagePart, ToolActivity as ToolActivityData } from './session-view';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data }: PageProps = $props();
+
+	// Render parts in order, but keep runs of consecutive tools together so they
+	// stay tightly spaced while interleaved text breaks them into separate groups.
+	type RenderGroup =
+		| { kind: 'text'; html: string }
+		| { kind: 'tools'; tools: ToolActivityData[] };
+
+	function groupParts(parts: MessagePart[]): RenderGroup[] {
+		const groups: RenderGroup[] = [];
+		for (const part of parts) {
+			if (part.kind === 'text') {
+				groups.push({ kind: 'text', html: part.html });
+			} else {
+				const last = groups.at(-1);
+				if (last?.kind === 'tools') last.tools.push(part.tool);
+				else groups.push({ kind: 'tools', tools: [part.tool] });
+			}
+		}
+		return groups;
+	}
 
 	let userOnly = $state(false);
 	const expanded = new SvelteSet<string>();
@@ -189,17 +210,17 @@
 					</header>
 
 					<div class="flex flex-col gap-4 sm:pl-9.5">
-						{#if message.html}
-							<Markdown sanitizedHtml={message.html} />
-						{/if}
-
-						{#if message.tools.length > 0}
-							<div class="flex flex-col gap-1.5">
-								{#each message.tools as tool, index (`${message.id}-${index}`)}
-									<ToolActivity {tool} />
-								{/each}
-							</div>
-						{/if}
+						{#each groupParts(message.parts) as group, groupIndex (`${message.id}-${groupIndex}`)}
+							{#if group.kind === 'text'}
+								<Markdown sanitizedHtml={group.html} />
+							{:else}
+								<div class="flex flex-col gap-1.5">
+									{#each group.tools as tool, index (`${message.id}-${groupIndex}-${index}`)}
+										<ToolActivity {tool} />
+									{/each}
+								</div>
+							{/if}
+						{/each}
 					</div>
 				</article>
 				{/if}
