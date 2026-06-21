@@ -82,7 +82,10 @@ export function diffFromEdit(oldText: string, newText: string, file?: string): D
 export function diffFromPatch(text: string): DiffView | null {
 	const files: DiffFile[] = [];
 	let current: DiffFile | undefined;
-	let looksLikeDiff = false;
+	// Only a genuine structural marker (V4A file header or a real unified hunk
+	// header) qualifies as a diff — stray "+"/"-" lines do not, otherwise plain
+	// command output like `ls -l` (`-rw-r--r--…`) would be mistaken for one.
+	let isDiff = false;
 
 	const startFile = (op: DiffFileOp, path?: string): DiffFile => {
 		current = { op, path, lines: [] };
@@ -94,83 +97,83 @@ export function diffFromPatch(text: string): DiffView | null {
 	for (const raw of text.split('\n')) {
 		// apply_patch scaffolding — drop it.
 		if (/^\*\*\* (?:Begin|End) Patch\s*$/.test(raw)) {
-			looksLikeDiff = true;
+			isDiff = true;
 			continue;
 		}
 
 		// File operation headers.
 		let match = raw.match(/^\*\*\* Update File: (.+)$/);
 		if (match) {
-			looksLikeDiff = true;
+			isDiff = true;
 			startFile('update', match[1].trim());
 			continue;
 		}
 		match = raw.match(/^\*\*\* Add File: (.+)$/);
 		if (match) {
-			looksLikeDiff = true;
+			isDiff = true;
 			startFile('add', match[1].trim());
 			continue;
 		}
 		match = raw.match(/^\*\*\* Delete File: (.+)$/);
 		if (match) {
-			looksLikeDiff = true;
+			isDiff = true;
 			startFile('delete', match[1].trim());
 			continue;
 		}
 		match = raw.match(/^\*\*\* Move to: (.+)$/);
 		if (match) {
-			looksLikeDiff = true;
+			isDiff = true;
 			const file = ensureFile();
 			file.op = 'move';
 			file.newPath = match[1].trim();
 			continue;
 		}
 
-		// Unified diff headers.
+		// Unified diff headers (`diff --git` and a real `@@ -n,m +n,m @@` hunk are
+		// the only strong signals; `+++`/`---` alone are not, since they collide
+		// with ordinary text).
 		match = raw.match(/^diff --git a\/.+ b\/(.+)$/);
 		if (match) {
-			looksLikeDiff = true;
+			isDiff = true;
 			startFile('update', match[1].trim());
 			continue;
 		}
+		if (/^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@/.test(raw)) {
+			isDiff = true;
+			const context = raw.replace(/^@@.*?@@/, '').trim();
+			if (context) ensureFile().lines.push({ type: 'meta', text: context });
+			continue;
+		}
+
+		// Lines below here are only meaningful once we already know this is a diff;
+		// until then they're collected but discarded if no marker ever appears.
 		match = raw.match(/^\+\+\+ (?:b\/)?(.+)$/);
 		if (match) {
-			looksLikeDiff = true;
 			const file = ensureFile();
 			file.path ??= match[1].trim();
 			continue;
 		}
 		if (/^(--- |index |new file|deleted file|rename )/.test(raw)) {
-			looksLikeDiff = true;
 			continue;
 		}
-
-		// Hunk header: keep any trailing context, drop the "@@ … @@" / "@@" marker.
+		// V4A hunk separator: "@@" or "@@ ctx" (no line numbers).
 		if (raw.startsWith('@@')) {
-			looksLikeDiff = true;
-			const context = raw
-				.replace(/^@@.*?@@/, '') // unified: "@@ -1,2 +3,4 @@ ctx"
-				.replace(/^@@/, '') // V4A: "@@ ctx" or bare "@@"
-				.trim();
+			const context = raw.replace(/^@@/, '').trim();
 			if (context) ensureFile().lines.push({ type: 'meta', text: context });
 			continue;
 		}
-
-		// Content lines.
 		if (raw.startsWith('+')) {
-			looksLikeDiff = true;
 			ensureFile().lines.push({ type: 'add', text: raw.slice(1) });
 			continue;
 		}
 		if (raw.startsWith('-')) {
-			looksLikeDiff = true;
 			ensureFile().lines.push({ type: 'del', text: raw.slice(1) });
 			continue;
 		}
 		ensureFile().lines.push({ type: 'context', text: raw.startsWith(' ') ? raw.slice(1) : raw });
 	}
 
-	return looksLikeDiff ? { files } : null;
+	return isDiff ? { files } : null;
 }
 
 /**
