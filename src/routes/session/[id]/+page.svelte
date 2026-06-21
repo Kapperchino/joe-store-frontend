@@ -5,6 +5,7 @@
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
+	import OctagonXIcon from '@lucide/svelte/icons/octagon-x';
 	import { Button } from '$lib/components/ui/button';
 	import Markdown from '$lib/components/markdown.svelte';
 	import ToolActivity from './tool-activity.svelte';
@@ -12,7 +13,14 @@
 	import ClaudeIcon from './claude-icon.svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import type { PageProps } from './$types';
-	import type { MessagePart, ToolActivity as ToolActivityData } from './session-view';
+	import CommandChip from './command-chip.svelte';
+	import NotificationChip from './notification-chip.svelte';
+	import type {
+		CommandView,
+		MessagePart,
+		NotificationView,
+		ToolActivity as ToolActivityData
+	} from './session-view';
 	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data }: PageProps = $props();
@@ -21,13 +29,22 @@
 	// stay tightly spaced while interleaved text breaks them into separate groups.
 	type RenderGroup =
 		| { kind: 'text'; html: string }
-		| { kind: 'tools'; tools: ToolActivityData[] };
+		| { kind: 'tools'; tools: ToolActivityData[] }
+		| { kind: 'command'; command: CommandView }
+		| { kind: 'notice'; text: string }
+		| { kind: 'notification'; notification: NotificationView };
 
 	function groupParts(parts: MessagePart[]): RenderGroup[] {
 		const groups: RenderGroup[] = [];
 		for (const part of parts) {
 			if (part.kind === 'text') {
 				groups.push({ kind: 'text', html: part.html });
+			} else if (part.kind === 'command') {
+				groups.push({ kind: 'command', command: part.command });
+			} else if (part.kind === 'notice') {
+				groups.push({ kind: 'notice', text: part.text });
+			} else if (part.kind === 'notification') {
+				groups.push({ kind: 'notification', notification: part.notification });
 			} else {
 				const last = groups.at(-1);
 				if (last?.kind === 'tools') last.tools.push(part.tool);
@@ -144,6 +161,9 @@
 
 			{#each data.session.messages as message (message.id)}
 				{@const collapsed = userOnly && message.role !== 'user' && !expanded.has(message.id)}
+				{@const statusOnly =
+					message.parts.length > 0 &&
+					message.parts.every((part) => part.kind === 'notice' || part.kind === 'notification')}
 				{#if collapsed}
 					<button
 						type="button"
@@ -169,6 +189,28 @@
 						</span>
 						<ChevronDownIcon class="size-4 shrink-0" aria-hidden="true" />
 					</button>
+				{:else if statusOnly}
+					<div class="flex flex-col gap-1.5 border-b border-border py-2.5">
+						{#each groupParts(message.parts) as group, groupIndex (`${message.id}-${groupIndex}`)}
+							<div class="flex items-center gap-2">
+								{#if group.kind === 'notice'}
+									<span class="flex min-w-0 flex-1 items-center gap-2 text-xs font-medium text-muted-foreground">
+										<OctagonXIcon class="size-3.5 shrink-0" aria-hidden="true" />
+										<span class="truncate">{group.text}</span>
+									</span>
+								{:else if group.kind === 'notification'}
+									<span class="min-w-0 flex-1">
+										<NotificationChip notification={group.notification} />
+									</span>
+								{/if}
+								{#if groupIndex === 0 && message.timestamp}
+									<time class="shrink-0 text-xs text-muted-foreground" datetime={message.timestamp}>
+										{formatDate(message.timestamp)}
+									</time>
+								{/if}
+							</div>
+						{/each}
+					</div>
 				{:else}
 					<article class="border-b border-border py-8">
 					<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -213,6 +255,17 @@
 						{#each groupParts(message.parts) as group, groupIndex (`${message.id}-${groupIndex}`)}
 							{#if group.kind === 'text'}
 								<Markdown sanitizedHtml={group.html} />
+							{:else if group.kind === 'command'}
+								<CommandChip command={group.command} />
+							{:else if group.kind === 'notice'}
+								<div
+									class="flex items-center gap-2 text-xs font-medium text-muted-foreground"
+								>
+									<OctagonXIcon class="size-3.5 shrink-0" aria-hidden="true" />
+									<span>{group.text}</span>
+								</div>
+							{:else if group.kind === 'notification'}
+								<NotificationChip notification={group.notification} />
 							{:else}
 								<div class="flex flex-col gap-1.5">
 									{#each group.tools as tool, index (`${message.id}-${groupIndex}-${index}`)}
