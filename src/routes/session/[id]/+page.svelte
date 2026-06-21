@@ -5,8 +5,8 @@
 	import UserIcon from '@lucide/svelte/icons/user';
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
 	import Markdown from '$lib/components/markdown.svelte';
+	import ToolActivity from './tool-activity.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -27,6 +27,26 @@
 		if (role === 'tool') return 'Tool activity';
 		return 'User';
 	}
+
+	const properties = $derived(
+		[
+			{ label: 'Provider', value: data.session.provider === 'openai' ? 'OpenAI' : 'Claude' },
+			{ label: 'Model', value: data.session.model ?? 'Unknown' },
+			{ label: 'Entries', value: data.session.entryCount.toLocaleString() },
+			{ label: 'Messages', value: data.session.messages.length.toLocaleString() },
+			{ label: 'Started', value: formatDate(data.session.startedAt) },
+			{ label: 'Updated', value: formatDate(data.session.endedAt) },
+			...(data.session.branch
+				? [{ label: 'Branch', value: data.session.branch, mono: true }]
+				: []),
+			...(data.session.cwd
+				? [{ label: 'Working directory', value: data.session.cwd, mono: true }]
+				: []),
+			...(data.session.sessionIdentifier
+				? [{ label: 'Session', value: data.session.sessionIdentifier, mono: true }]
+				: [])
+		] as Array<{ label: string; value: string; mono?: boolean }>
+	);
 </script>
 
 <svelte:head>
@@ -34,127 +54,75 @@
 	<meta name="description" content={`View session ${data.sessionId} in Joe Store.`} />
 </svelte:head>
 
-<main class="min-h-svh bg-muted/40 px-4 py-8 sm:px-6 lg:py-12">
-	<div class="mx-auto flex w-full max-w-5xl flex-col gap-6">
-		<div>
-			<Button href={resolve('/')} variant="ghost" size="sm">
+<main class="min-h-svh bg-background px-4 py-6 sm:px-6 lg:py-10">
+	<div class="mx-auto flex w-full max-w-3xl flex-col">
+		<div class="mb-6">
+			<Button href={resolve('/')} variant="ghost" size="sm" class="-ml-2 text-muted-foreground">
 				<ArrowLeftIcon data-icon="inline-start" />
 				Back
 			</Button>
 		</div>
 
-		<Card.Root>
-			<Card.Header>
-				<Card.Title class="text-2xl sm:text-3xl">{data.session.title}</Card.Title>
-				<Card.Description>
-					{data.session.provider === 'openai' ? 'OpenAI' : 'Claude'} session #{data.sessionId}
-				</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<dl class="grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
-					<div class="flex min-w-0 flex-col gap-1">
-						<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Model</dt>
-						<dd>{data.session.model ?? 'Unknown'}</dd>
-					</div>
-					<div class="flex min-w-0 flex-col gap-1">
-						<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Entries</dt>
-						<dd>{data.session.entryCount.toLocaleString()}</dd>
-					</div>
-					<div class="flex min-w-0 flex-col gap-1">
-						<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Messages</dt>
-						<dd>{data.session.messages.length.toLocaleString()}</dd>
-					</div>
-					<div class="flex min-w-0 flex-col gap-1">
-						<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Started</dt>
-						<dd>{formatDate(data.session.startedAt)}</dd>
-					</div>
-					<div class="flex min-w-0 flex-col gap-1">
-						<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Updated</dt>
-						<dd>{formatDate(data.session.endedAt)}</dd>
-					</div>
-					{#if data.session.branch}
-						<div class="flex min-w-0 flex-col gap-1">
-							<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Branch</dt>
-							<dd class="truncate font-mono text-xs" title={data.session.branch}>{data.session.branch}</dd>
-						</div>
-					{/if}
-					{#if data.session.cwd}
-						<div class="flex min-w-0 flex-col gap-1 sm:col-span-2 lg:col-span-3">
-							<dt class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Working directory</dt>
-							<dd class="truncate font-mono text-xs" title={data.session.cwd}>{data.session.cwd}</dd>
-						</div>
-					{/if}
-				</dl>
-			</Card.Content>
-			{#if data.session.sessionIdentifier}
-				<Card.Footer>
-					<p class="break-all font-mono text-xs text-muted-foreground">
-						Session {data.session.sessionIdentifier}
-					</p>
-				</Card.Footer>
-			{/if}
-		</Card.Root>
+		<header class="mb-8">
+			<h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{data.session.title}</h1>
 
-		<section class="flex flex-col gap-4" aria-labelledby="conversation-heading">
-			<div class="flex items-end justify-between gap-4 px-1">
-				<div class="flex flex-col gap-1">
-					<h2 id="conversation-heading" class="text-xl font-semibold tracking-tight">Conversation</h2>
-					<p class="text-sm text-muted-foreground">Messages and tool activity in chronological order.</p>
-				</div>
-			</div>
+			<dl class="mt-6 flex flex-col gap-px">
+				{#each properties as property (property.label)}
+					<div class="flex items-baseline gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50">
+						<dt class="w-36 shrink-0 text-sm text-muted-foreground">{property.label}</dt>
+						<dd
+							class="min-w-0 flex-1 break-words text-sm {property.mono ? 'font-mono text-xs' : ''}"
+						>
+							{property.value}
+						</dd>
+					</div>
+				{/each}
+			</dl>
+		</header>
+
+		<hr class="mb-2 border-border" />
+
+		<section aria-labelledby="conversation-heading">
+			<h2 id="conversation-heading" class="sr-only">Conversation</h2>
 
 			{#each data.session.messages as message (message.id)}
-				<Card.Root size="sm">
-					<Card.Header>
-						<div class="flex items-center gap-2">
-							{#if message.role === 'user'}
-								<UserIcon class="size-4 text-muted-foreground" aria-hidden="true" />
-							{:else if message.role === 'assistant'}
-								<BotIcon class="size-4 text-muted-foreground" aria-hidden="true" />
-							{:else}
-								<WrenchIcon class="size-4 text-muted-foreground" aria-hidden="true" />
-							{/if}
-							<Card.Title>{roleLabel(message.role)}</Card.Title>
+				<article class="border-b border-border py-8">
+					<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
+						<div class="flex items-center gap-2.5">
+							<span
+								class="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground"
+							>
+								{#if message.role === 'user'}
+									<UserIcon class="size-4" aria-hidden="true" />
+								{:else if message.role === 'assistant'}
+									<BotIcon class="size-4" aria-hidden="true" />
+								{:else}
+									<WrenchIcon class="size-4" aria-hidden="true" />
+								{/if}
+							</span>
+							<h3 class="text-sm font-semibold tracking-tight">{roleLabel(message.role)}</h3>
 						</div>
 						{#if message.timestamp}
-							<Card.Description>
-								<time datetime={message.timestamp}>{formatDate(message.timestamp)}</time>
-							</Card.Description>
+							<time class="text-xs text-muted-foreground" datetime={message.timestamp}>
+								{formatDate(message.timestamp)}
+							</time>
 						{/if}
-					</Card.Header>
-					<Card.Content class="flex flex-col gap-4">
+					</header>
+
+					<div class="flex flex-col gap-4 sm:pl-9.5">
 						{#if message.html}
 							<Markdown sanitizedHtml={message.html} />
 						{/if}
 
 						{#each message.tools as tool, index (`${message.id}-${index}`)}
-							<details class="rounded-xl bg-muted px-4 py-3">
-								<summary class="cursor-pointer font-mono text-xs font-medium">{tool.label}</summary>
-								{#if tool.input}
-									<div class="mt-4 flex flex-col gap-2">
-										<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Input</p>
-										<pre class="overflow-x-auto whitespace-pre-wrap break-words text-xs leading-5"><code>{tool.input}</code></pre>
-									</div>
-								{/if}
-								{#if tool.output}
-									<div class="mt-4 flex flex-col gap-2">
-										<p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Output</p>
-										<pre class="overflow-x-auto whitespace-pre-wrap break-words text-xs leading-5"><code>{tool.output}</code></pre>
-									</div>
-								{/if}
-							</details>
+							<ToolActivity {tool} />
 						{/each}
-					</Card.Content>
-				</Card.Root>
+					</div>
+				</article>
 			{:else}
-				<Card.Root>
-					<Card.Header>
-						<Card.Title>No conversation messages</Card.Title>
-						<Card.Description>
-							This session contains metadata, but no displayable messages or tool activity.
-						</Card.Description>
-					</Card.Header>
-				</Card.Root>
+				<p class="py-8 text-sm text-muted-foreground">
+					This session contains metadata, but no displayable messages or tool activity.
+				</p>
 			{/each}
 		</section>
 	</div>
