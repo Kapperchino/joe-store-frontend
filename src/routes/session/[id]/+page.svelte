@@ -3,16 +3,29 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import { Button } from '$lib/components/ui/button';
 	import Markdown from '$lib/components/markdown.svelte';
 	import ToolActivity from './tool-activity.svelte';
 	import OpenAIIcon from './openai-icon.svelte';
 	import ClaudeIcon from './claude-icon.svelte';
+	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import type { PageProps } from './$types';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data }: PageProps = $props();
 
 	let userOnly = $state(false);
+	const expanded = new SvelteSet<string>();
+
+	function toggleExpanded(id: string): void {
+		if (expanded.has(id)) {
+			expanded.delete(id);
+		} else {
+			expanded.add(id);
+		}
+	}
 
 	const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
 		dateStyle: 'medium',
@@ -59,11 +72,12 @@
 
 <main class="min-h-svh bg-background px-4 py-6 sm:px-6 lg:py-10">
 	<div class="mx-auto flex w-full max-w-3xl flex-col">
-		<div class="mb-6">
+		<div class="mb-6 flex items-center justify-between">
 			<Button href={resolve('/')} variant="ghost" size="sm" class="-ml-2 text-muted-foreground">
 				<ArrowLeftIcon data-icon="inline-start" />
 				Back
 			</Button>
+			<ThemeToggle />
 		</div>
 
 		<header class="mb-8">
@@ -108,9 +122,13 @@
 			</div>
 
 			{#each data.session.messages as message (message.id)}
-				{@const collapsed = userOnly && message.role !== 'user'}
+				{@const collapsed = userOnly && message.role !== 'user' && !expanded.has(message.id)}
 				{#if collapsed}
-					<article class="flex items-center gap-2.5 border-b border-border py-2.5 text-muted-foreground">
+					<button
+						type="button"
+						onclick={() => toggleExpanded(message.id)}
+						class="flex w-full items-center gap-2.5 border-b border-border py-2.5 text-left text-muted-foreground transition-colors hover:text-foreground"
+					>
 						<span class="flex size-5 shrink-0 items-center justify-center">
 							{#if message.role === 'assistant'}
 								{#if data.session.provider === 'openai'}
@@ -128,7 +146,8 @@
 									? `${message.tools.length} tool ${message.tools.length === 1 ? 'action' : 'actions'}`
 									: roleLabel(message.role))}
 						</span>
-					</article>
+						<ChevronDownIcon class="size-4 shrink-0" aria-hidden="true" />
+					</button>
 				{:else}
 					<article class="border-b border-border py-8">
 					<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -150,11 +169,23 @@
 							</span>
 							<h3 class="text-sm font-semibold tracking-tight">{roleLabel(message.role)}</h3>
 						</div>
-						{#if message.timestamp}
-							<time class="text-xs text-muted-foreground" datetime={message.timestamp}>
-								{formatDate(message.timestamp)}
-							</time>
-						{/if}
+						<div class="flex items-center gap-3">
+							{#if message.timestamp}
+								<time class="text-xs text-muted-foreground" datetime={message.timestamp}>
+									{formatDate(message.timestamp)}
+								</time>
+							{/if}
+							{#if userOnly && message.role !== 'user'}
+								<button
+									type="button"
+									onclick={() => toggleExpanded(message.id)}
+									class="text-muted-foreground transition-colors hover:text-foreground"
+									aria-label="Collapse message"
+								>
+									<ChevronUpIcon class="size-4" aria-hidden="true" />
+								</button>
+							{/if}
+						</div>
 					</header>
 
 					<div class="flex flex-col gap-4 sm:pl-9.5">
