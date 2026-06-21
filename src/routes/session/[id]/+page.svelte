@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
-	import BotIcon from '@lucide/svelte/icons/bot';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import { Button } from '$lib/components/ui/button';
 	import Markdown from '$lib/components/markdown.svelte';
 	import ToolActivity from './tool-activity.svelte';
+	import OpenAIIcon from './openai-icon.svelte';
+	import ClaudeIcon from './claude-icon.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -95,7 +96,11 @@
 								{#if message.role === 'user'}
 									<UserIcon class="size-4" aria-hidden="true" />
 								{:else if message.role === 'assistant'}
-									<BotIcon class="size-4" aria-hidden="true" />
+									{#if data.session.provider === 'openai'}
+										<OpenAIIcon class="size-4" />
+									{:else}
+										<ClaudeIcon class="size-4" />
+									{/if}
 								{:else}
 									<WrenchIcon class="size-4" aria-hidden="true" />
 								{/if}
@@ -114,9 +119,13 @@
 							<Markdown sanitizedHtml={message.html} />
 						{/if}
 
-						{#each message.tools as tool, index (`${message.id}-${index}`)}
-							<ToolActivity {tool} />
-						{/each}
+						{#if message.tools.length > 0}
+							<div class="flex flex-col gap-1.5">
+								{#each message.tools as tool, index (`${message.id}-${index}`)}
+									<ToolActivity {tool} />
+								{/each}
+							</div>
+						{/if}
 					</div>
 				</article>
 			{:else}

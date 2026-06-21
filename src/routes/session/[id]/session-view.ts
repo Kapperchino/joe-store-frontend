@@ -7,6 +7,7 @@ export interface ToolActivity {
 	label: string;
 	input?: string;
 	output?: string;
+	isError?: boolean;
 }
 
 export interface SessionMessageView {
@@ -83,36 +84,61 @@ function claudeText(entry: Extract<ClaudeSessionEntry, { type: 'user' }>): strin
 	return text || undefined;
 }
 
-function claudeUserTools(
-	entry: Extract<ClaudeSessionEntry, { type: 'user' }>
-): ToolActivity[] {
-	const content = entry.message.content;
-	if (typeof content === 'string') return [];
-
-	return content
-		.filter((block) => block.type === 'tool_result')
-		.map((block) => ({
-			label: block.is_error ? 'Tool error' : 'Tool result',
-			output: formatDetail(block.content)
-		}));
-}
-
 function claudeView(data: ClaudeSessionEntry[]): SessionView {
 	const messages: SessionMessageView[] = [];
+	// Tool calls and their results live in separate entries; track each call by
+	// id so the result can be merged back into the assistant reply that issued it.
+	const toolsById = new Map<string, ToolActivity>();
+	let lastAssistant: SessionMessageView | undefined;
 
 	data.forEach((entry, index) => {
 		if (entry.type === 'user') {
 			const text = claudeText(entry);
-			const tools = claudeUserTools(entry);
-			if (text || tools.length > 0) {
+			const content = entry.message.content;
+			const resultBlocks =
+				typeof content === 'string'
+					? []
+					: content.filter((block) => block.type === 'tool_result');
+
+			const orphanResults: ToolActivity[] = [];
+			for (const block of resultBlocks) {
+				const existing = toolsById.get(block.tool_use_id);
+				const output = formatDetail(block.content);
+				if (existing) {
+					existing.output = output;
+					existing.isError = block.is_error ?? false;
+				} else {
+					orphanResults.push({
+						label: block.is_error ? 'Tool error' : 'Tool result',
+						output,
+						isError: block.is_error ?? false
+					});
+				}
+			}
+
+			if (text) {
 				messages.push({
 					id: entry.uuid || `claude-${index}`,
-					role: text ? 'user' : 'tool',
+					role: 'user',
 					text,
-					html: text ? renderMarkdown(text) : undefined,
+					html: renderMarkdown(text),
 					timestamp: entry.timestamp,
-					tools
+					tools: []
 				});
+				lastAssistant = undefined;
+			}
+
+			if (orphanResults.length > 0) {
+				if (lastAssistant) {
+					lastAssistant.tools.push(...orphanResults);
+				} else {
+					messages.push({
+						id: entry.uuid || `claude-${index}`,
+						role: 'tool',
+						timestamp: entry.timestamp,
+						tools: orphanResults
+					});
+				}
 			}
 		}
 
@@ -122,19 +148,29 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 				.map((block) => block.text)
 				.join('\n\n')
 				.trim();
-			const tools = entry.message.content
-				.filter((block) => block.type === 'tool_use')
-				.map((block) => ({ label: String(block.name), input: formatDetail(block.input) }));
+			const tools: ToolActivity[] = [];
+			for (const block of entry.message.content) {
+				if (block.type === 'tool_use') {
+					const activity: ToolActivity = {
+						label: String(block.name),
+						input: formatDetail(block.input)
+					};
+					tools.push(activity);
+					if (block.id) toolsById.set(block.id, activity);
+				}
+			}
 
 			if (text || tools.length > 0) {
-				messages.push({
+				const message: SessionMessageView = {
 					id: entry.uuid || `claude-${index}`,
 					role: 'assistant',
 					text: text || undefined,
 					html: text ? renderMarkdown(text) : undefined,
 					timestamp: entry.timestamp,
 					tools
-				});
+				};
+				messages.push(message);
+				lastAssistant = message;
 			}
 		}
 	});
@@ -175,6 +211,11 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 			(entry.payload.role === 'user' || entry.payload.role === 'assistant')
 	);
 
+	// Tool calls and outputs arrive as separate items; track each call by id so
+	// the output can be merged back into the assistant reply that issued it.
+	const toolsById = new Map<string, ToolActivity>();
+	let lastAssistant: SessionMessageView | undefined;
+
 	data.forEach((entry, index) => {
 		if (entry.type === 'response_item') {
 			const item = entry.payload;
@@ -187,38 +228,55 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 				const text =
 					item.role === 'user' ? stripOpenAIEnvironmentContext(rawText) : rawText || undefined;
 				if (text) {
-					messages.push({
+					const message: SessionMessageView = {
 						id: `openai-${index}`,
 						role: item.role,
 						text,
 						html: renderMarkdown(text),
 						timestamp: entry.timestamp,
 						tools: []
-					});
+					};
+					messages.push(message);
+					lastAssistant = item.role === 'assistant' ? message : undefined;
 				}
 			}
 
 			if (item.type === 'function_call' || item.type === 'custom_tool_call') {
-				messages.push({
-					id: item.call_id || `openai-${index}`,
-					role: 'tool',
-					timestamp: entry.timestamp,
-					tools: [
-						{
-							label: item.name,
-							input: formatDetail(item.type === 'function_call' ? item.arguments : item.input)
-						}
-					]
-				});
+				const activity: ToolActivity = {
+					label: item.name,
+					input: formatDetail(item.type === 'function_call' ? item.arguments : item.input)
+				};
+				if (item.call_id) toolsById.set(item.call_id, activity);
+
+				// Attach the call to the assistant turn that issued it; if the model
+				// went straight to a tool with no text, synthesize an assistant reply.
+				if (!lastAssistant) {
+					lastAssistant = {
+						id: item.call_id || `openai-${index}`,
+						role: 'assistant',
+						timestamp: entry.timestamp,
+						tools: []
+					};
+					messages.push(lastAssistant);
+				}
+				lastAssistant.tools.push(activity);
 			}
 
 			if (item.type === 'function_call_output' || item.type === 'custom_tool_call_output') {
-				messages.push({
-					id: `${item.call_id}-output-${index}`,
-					role: 'tool',
-					timestamp: entry.timestamp,
-					tools: [{ label: 'Tool result', output: formatDetail(item.output) }]
-				});
+				const existing = toolsById.get(item.call_id);
+				const output = formatDetail(item.output);
+				if (existing) {
+					existing.output = output;
+				} else if (lastAssistant) {
+					lastAssistant.tools.push({ label: 'Tool result', output });
+				} else {
+					messages.push({
+						id: `${item.call_id}-output-${index}`,
+						role: 'tool',
+						timestamp: entry.timestamp,
+						tools: [{ label: 'Tool result', output }]
+					});
+				}
 			}
 		}
 
@@ -230,14 +288,16 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 						? stripOpenAIEnvironmentContext(event.message)
 						: event.message.trim() || undefined;
 				if (text) {
-					messages.push({
+					const message: SessionMessageView = {
 						id: `openai-event-${index}`,
 						role: event.type === 'user_message' ? 'user' : 'assistant',
 						text,
 						html: renderMarkdown(text),
 						timestamp: entry.timestamp,
 						tools: []
-					});
+					};
+					messages.push(message);
+					lastAssistant = event.type === 'agent_message' ? message : undefined;
 				}
 			}
 		}
@@ -267,6 +327,34 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 	};
 }
 
+// Collapse a whole agent turn into a single block: everything an assistant says
+// and does between two user messages — including multi-step tool round-trips that
+// arrive as separate entries — is merged so its tools list together in one reply.
+function mergeAgentTurns(messages: SessionMessageView[]): SessionMessageView[] {
+	const merged: SessionMessageView[] = [];
+
+	for (const message of messages) {
+		const previous = merged.at(-1);
+
+		if (message.role !== 'user' && previous && previous.role !== 'user') {
+			previous.tools.push(...message.tools);
+			if (message.text) {
+				previous.text = previous.text ? `${previous.text}\n\n${message.text}` : message.text;
+			}
+			if (message.html) {
+				previous.html = previous.html ? `${previous.html}\n${message.html}` : message.html;
+			}
+			if (message.role === 'assistant') previous.role = 'assistant';
+			continue;
+		}
+
+		merged.push({ ...message, tools: [...message.tools] });
+	}
+
+	return merged;
+}
+
 export function createSessionView(session: Session): SessionView {
-	return session.type === 'claude' ? claudeView(session.data) : openAIView(session.data);
+	const view = session.type === 'claude' ? claudeView(session.data) : openAIView(session.data);
+	return { ...view, messages: mergeAgentTurns(view.messages) };
 }
