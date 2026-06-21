@@ -54,7 +54,17 @@
 		return groups;
 	}
 
-	let userOnly = $state(false);
+	// Summary view keeps only the agent's final prose from a merged turn — the
+	// closing message (e.g. "What I built/changed …") — dropping the tool calls and
+	// intermediate chatter that precede it in the block.
+	function finalTextGroups(parts: MessagePart[]): RenderGroup[] {
+		const groups = groupParts(parts);
+		const lastText = groups.findLast((group) => group.kind === 'text');
+		return lastText ? [lastText] : groups;
+	}
+
+	type View = 'all' | 'user' | 'summary';
+	let view = $state<View>('all');
 	const expanded = new SvelteSet<string>();
 
 	function toggleExpanded(id: string): void {
@@ -142,25 +152,39 @@
 
 			<div class="flex items-center justify-end gap-1 pt-4">
 				<Button
-					variant={userOnly ? 'ghost' : 'secondary'}
+					variant={view === 'all' ? 'secondary' : 'ghost'}
 					size="sm"
-					aria-pressed={!userOnly}
-					onclick={() => (userOnly = false)}
+					aria-pressed={view === 'all'}
+					onclick={() => (view = 'all')}
 				>
-					All messages
+					All
 				</Button>
 				<Button
-					variant={userOnly ? 'secondary' : 'ghost'}
+					variant={view === 'summary' ? 'secondary' : 'ghost'}
 					size="sm"
-					aria-pressed={userOnly}
-					onclick={() => (userOnly = true)}
+					aria-pressed={view === 'summary'}
+					onclick={() => (view = 'summary')}
+				>
+					Short
+				</Button>
+				<Button
+					variant={view === 'user' ? 'secondary' : 'ghost'}
+					size="sm"
+					aria-pressed={view === 'user'}
+					onclick={() => (view = 'user')}
 				>
 					User only
 				</Button>
 			</div>
 
 			{#each data.session.messages as message (message.id)}
-				{@const collapsed = userOnly && message.role !== 'user' && !expanded.has(message.id)}
+				{@const isAgent = message.role !== 'user'}
+				{@const hasText = message.parts.some((part) => part.kind === 'text')}
+				{@const collapsible =
+					(view === 'user' && isAgent) || (view === 'summary' && isAgent && !hasText)}
+				{@const collapsed = collapsible && !expanded.has(message.id)}
+				{@const summaryAgent = view === 'summary' && isAgent && hasText}
+				{@const summaryFinal = summaryAgent && !expanded.has(message.id)}
 				{@const statusOnly =
 					message.parts.length > 0 &&
 					message.parts.every((part) => part.kind === 'notice' || part.kind === 'notification')}
@@ -177,6 +201,8 @@
 								{:else}
 									<ClaudeIcon class="size-3.5" />
 								{/if}
+							{:else if message.role === 'user'}
+								<UserIcon class="size-3.5" aria-hidden="true" />
 							{:else}
 								<WrenchIcon class="size-3.5" aria-hidden="true" />
 							{/if}
@@ -238,7 +264,7 @@
 									{formatDate(message.timestamp)}
 								</time>
 							{/if}
-							{#if userOnly && message.role !== 'user'}
+							{#if collapsible}
 								<button
 									type="button"
 									onclick={() => toggleExpanded(message.id)}
@@ -247,12 +273,25 @@
 								>
 									<ChevronUpIcon class="size-4" aria-hidden="true" />
 								</button>
+							{:else if summaryAgent}
+								<button
+									type="button"
+									onclick={() => toggleExpanded(message.id)}
+									class="text-muted-foreground transition-colors hover:text-foreground"
+									aria-label={summaryFinal ? 'Show full turn' : 'Show final message only'}
+								>
+									{#if summaryFinal}
+										<ChevronDownIcon class="size-4" aria-hidden="true" />
+									{:else}
+										<ChevronUpIcon class="size-4" aria-hidden="true" />
+									{/if}
+								</button>
 							{/if}
 						</div>
 					</header>
 
 					<div class="flex flex-col gap-4 sm:pl-9.5">
-						{#each groupParts(message.parts) as group, groupIndex (`${message.id}-${groupIndex}`)}
+						{#each summaryFinal ? finalTextGroups(message.parts) : groupParts(message.parts) as group, groupIndex (`${message.id}-${groupIndex}`)}
 							{#if group.kind === 'text'}
 								<Markdown sanitizedHtml={group.html} />
 							{:else if group.kind === 'command'}
