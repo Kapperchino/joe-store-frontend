@@ -12,7 +12,7 @@
 	import * as Empty from '$lib/components/ui/empty';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
-	import { getUserSessions, type SessionWithMeta } from '$lib/api';
+	import type { ErrorResponse, GetUserSessionsRes, SessionWithMeta } from '$lib/api';
 	import {
 		getBrowserSupabaseClient,
 		storeAuthTokens,
@@ -78,14 +78,20 @@
 		userEmail = session.user.email ?? null;
 
 		try {
-			const response = await getUserSessions(session.user.id, withStoredAccessToken());
+			const response = await fetch(resolve('/api/user/sessions'), withStoredAccessToken());
+			const payload = (await response.json()) as GetUserSessionsRes | ErrorResponse;
 
-			if (response.status === 200) {
-				sessions = [...response.data.sessions].sort(
+			if (response.ok && 'sessions' in payload) {
+				sessions = [...payload.sessions].sort(
 					(a, b) => createdAtTimestamp(b.created_time) - createdAtTimestamp(a.created_time)
 				);
+			} else if (response.status === 401) {
+				await supabase.auth.signOut({ scope: 'local' });
+				storeAuthTokens(null);
+				await goto(resolve('/login?next=/user'), { replaceState: true });
+				return;
 			} else {
-				loadError = response.data.error || 'Joe Store could not load your sessions.';
+				loadError = 'error' in payload ? payload.error : 'Joe Store could not load your sessions.';
 			}
 		} catch {
 			loadError = 'Joe Store could not reach the session service. Please try again shortly.';
