@@ -10,4 +10,5 @@ export type ClaudeSessionSystemSubtype = typeof ClaudeSessionSystemSubtype[keyof
 
 export const ClaudeSessionSystemSubtype = {
   turn_duration: 'turn_duration',
+  away_summary: 'away_summary',
 } as const;

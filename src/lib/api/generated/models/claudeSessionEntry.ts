@@ -97,15 +97,23 @@ export type ClaudeSessionEntry = {
   sessionId: string;
   type: 'last-prompt';
 } | {
+  /** @nullable */
+  content?: string | null;
   cwd: string;
-  /** @minimum 0 */
-  durationMs: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  durationMs?: number | null;
   entrypoint: ClaudeSessionEntrypoint;
   gitBranch: string;
   isMeta: boolean;
   isSidechain: boolean;
-  /** @minimum 0 */
-  messageCount: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  messageCount?: number | null;
   parentUuid: string;
   sessionId: string;
   subtype: ClaudeSessionSystemSubtype;
