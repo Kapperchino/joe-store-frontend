@@ -65,3 +65,57 @@ export function withStoredAccessToken(options: RequestInit = {}): RequestInit {
 
 	return { ...options, headers };
 }
+
+const CLI_LOGIN_STORAGE_KEYS = {
+	redirect: 'joe-store.cli.redirect',
+	state: 'joe-store.cli.state'
+} as const;
+
+function isLoopbackCallback(raw: string): boolean {
+	let url: URL;
+	try {
+		url = new URL(raw);
+	} catch {
+		return false;
+	}
+
+	return (
+		url.protocol === 'http:' &&
+		(url.hostname === '127.0.0.1' || url.hostname === 'localhost') &&
+		url.pathname === '/callback'
+	);
+}
+
+// A CLI (e.g. the joe-store upload-session skill) can request a loopback login by
+// opening /login with `cli_redirect=http://127.0.0.1:<port>/callback` and a random
+// `state`. We stash the request in sessionStorage so it survives the OAuth provider
+// round-trip. Only loopback (127.0.0.1 / localhost) callbacks are accepted — this is
+// the guard that stops the access token from being redirected to a remote origin.
+export function captureCliLoginRequest(search: string): void {
+	if (!browser) return;
+
+	const params = new URLSearchParams(search);
+	const redirect = params.get('cli_redirect');
+	if (!redirect || !isLoopbackCallback(redirect)) return;
+
+	sessionStorage.setItem(CLI_LOGIN_STORAGE_KEYS.redirect, redirect);
+	sessionStorage.setItem(CLI_LOGIN_STORAGE_KEYS.state, params.get('state') ?? '');
+}
+
+// Consumes a pending CLI login request and returns the loopback callback URL with
+// the access token (and echoed state) attached, or null if none is pending.
+export function takeCliLoginRedirect(session: Session): string | null {
+	if (!browser) return null;
+
+	const redirect = sessionStorage.getItem(CLI_LOGIN_STORAGE_KEYS.redirect);
+	const state = sessionStorage.getItem(CLI_LOGIN_STORAGE_KEYS.state);
+	if (!redirect || !state || !isLoopbackCallback(redirect)) return null;
+
+	sessionStorage.removeItem(CLI_LOGIN_STORAGE_KEYS.redirect);
+	sessionStorage.removeItem(CLI_LOGIN_STORAGE_KEYS.state);
+
+	const callback = new URL(redirect);
+	callback.searchParams.set('access_token', session.access_token);
+	callback.searchParams.set('state', state);
+	return callback.toString();
+}

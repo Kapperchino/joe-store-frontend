@@ -8,7 +8,12 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Spinner } from '$lib/components/ui/spinner';
-	import { getBrowserSupabaseClient, storeAuthTokens } from '$lib/auth';
+	import {
+		captureCliLoginRequest,
+		getBrowserSupabaseClient,
+		storeAuthTokens,
+		takeCliLoginRedirect
+	} from '$lib/auth';
 	import { onMount } from 'svelte';
 	import type { PageProps } from './$types';
 
@@ -42,6 +47,12 @@
 
 	onMount(() => {
 		let active = true;
+
+		// A CLI (e.g. the joe-store upload-session skill) opens this page with
+		// ?cli_redirect=http://127.0.0.1:<port>/callback&state=<state>. Stash it now
+		// so the request survives the OAuth round-trip; only loopback callbacks pass.
+		captureCliLoginRequest(window.location.search);
+
 		const supabase = getBrowserSupabaseClient(data.supabaseUrl, data.supabasePublishableKey);
 		const {
 			data: { subscription }
@@ -59,6 +70,13 @@
 			}
 
 			if (session) {
+				const cliRedirect = takeCliLoginRedirect(session);
+				if (cliRedirect) {
+					// Hand the token back to the local CLI server over loopback.
+					window.location.replace(cliRedirect);
+					return;
+				}
+
 				void goto(resolve(data.next as Pathname), { replaceState: true });
 			}
 		});
