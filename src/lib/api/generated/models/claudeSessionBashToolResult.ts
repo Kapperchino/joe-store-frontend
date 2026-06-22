@@ -11,6 +11,13 @@ export interface ClaudeSessionBashToolResult {
   interrupted: boolean;
   isImage: boolean;
   noOutputExpected: boolean;
+  /** @nullable */
+  persistedOutputPath?: string | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  persistedOutputSize?: number | null;
   stderr: string;
   stdout: string;
 }

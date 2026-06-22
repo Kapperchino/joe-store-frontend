@@ -22,9 +22,36 @@ export interface ToolActivity {
 	input?: string;
 	output?: string;
 	isError?: boolean;
+	task?: TaskActivityView;
+	tasks?: TaskView[];
+	persistedOutput?: PersistedOutputView;
 	// Structured AskUserQuestion view: the questions asked, their options, and
 	// which option(s) the user ended up choosing.
 	questions?: QuestionView[];
+}
+
+export interface TaskView {
+	id: string;
+	subject?: string;
+	description?: string;
+	activeForm?: string;
+	status?: string;
+	owner?: string;
+	blocks: string[];
+	blockedBy: string[];
+}
+
+export interface TaskActivityView extends TaskView {
+	action: 'create' | 'update';
+	metadata?: string;
+	previousStatus?: string;
+	updatedFields: string[];
+	success?: boolean;
+}
+
+export interface PersistedOutputView {
+	path: string;
+	size?: number;
 }
 
 // A slash command the user ran (e.g. `/clear`). Claude Code records these in the
@@ -311,6 +338,104 @@ function applyAnswers(questions: QuestionView[], result: unknown): void {
 	}
 }
 
+function valueRecord(value: unknown): Record<string, unknown> | undefined {
+	return value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
+}
+
+function optionalString(value: unknown): string | undefined {
+	return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function stringArray(value: unknown): string[] {
+	return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+function buildTaskActivity(name: string, input: unknown): TaskActivityView | undefined {
+	const data = valueRecord(input);
+	if (!data) return undefined;
+
+	if (name === 'TaskCreate') {
+		return {
+			action: 'create',
+			id: '',
+			subject: optionalString(data.subject),
+			description: optionalString(data.description),
+			activeForm: optionalString(data.activeForm),
+			metadata: formatDetail(data.metadata),
+			blocks: [],
+			blockedBy: [],
+			updatedFields: []
+		};
+	}
+
+	if (name === 'TaskUpdate') {
+		return {
+			action: 'update',
+			id: optionalString(data.taskId) ?? '',
+			subject: optionalString(data.subject),
+			description: optionalString(data.description),
+			activeForm: optionalString(data.activeForm),
+			status: optionalString(data.status),
+			owner: optionalString(data.owner),
+			metadata: formatDetail(data.metadata),
+			blocks: stringArray(data.addBlocks),
+			blockedBy: stringArray(data.addBlockedBy),
+			updatedFields: []
+		};
+	}
+
+	return undefined;
+}
+
+function applyStructuredToolResult(activity: ToolActivity, result: unknown): void {
+	if (activity.questions) applyAnswers(activity.questions, result);
+
+	const data = valueRecord(result);
+	if (!data) return;
+
+	const persistedOutputPath = optionalString(data.persistedOutputPath);
+	if (persistedOutputPath) {
+		activity.persistedOutput = {
+			path: persistedOutputPath,
+			size: typeof data.persistedOutputSize === 'number' ? data.persistedOutputSize : undefined
+		};
+	}
+
+	if (!activity.task) return;
+	if (activity.task.action === 'create') {
+		const task = valueRecord(data.task);
+		if (!task) return;
+		activity.task.id = optionalString(task.id) ?? activity.task.id;
+		activity.task.subject = optionalString(task.subject) ?? activity.task.subject;
+		activity.task.success = true;
+		return;
+	}
+
+	activity.task.id = optionalString(data.taskId) ?? activity.task.id;
+	activity.task.success = typeof data.success === 'boolean' ? data.success : undefined;
+	activity.task.updatedFields = stringArray(data.updatedFields);
+	const statusChange = valueRecord(data.statusChange);
+	if (statusChange) {
+		activity.task.previousStatus = optionalString(statusChange.from);
+		activity.task.status = optionalString(statusChange.to) ?? activity.task.status;
+	}
+}
+
+function taskReminderView(value: unknown): TaskView | undefined {
+	const task = valueRecord(value);
+	const id = optionalString(task?.id);
+	if (!task || !id) return undefined;
+	return {
+		id,
+		subject: optionalString(task.subject),
+		description: optionalString(task.description),
+		activeForm: optionalString(task.activeForm),
+		status: optionalString(task.status),
+		blocks: stringArray(task.blocks),
+		blockedBy: stringArray(task.blockedBy)
+	};
+}
+
 function range(timestamps: Array<string | undefined>) {
 	const values = timestamps.filter((value): value is string => Boolean(value));
 	return { startedAt: values.at(0), endedAt: values.at(-1) };
@@ -351,8 +476,9 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 				const output = formatDetail(block.content);
 				if (existing) {
 					existing.output = output;
-					existing.isError = block.is_error ?? false;
-					if (existing.questions) applyAnswers(existing.questions, entry.toolUseResult);
+					applyStructuredToolResult(existing, entry.toolUseResult);
+					existing.isError =
+						(block.is_error ?? false) || (existing.task?.success === false);
 				} else {
 					orphanResults.push({
 						label: block.is_error ? 'Tool error' : 'Tool result',
@@ -402,7 +528,8 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 				} else if (block.type === 'tool_use') {
 					const activity: ToolActivity = {
 						label: String(block.name),
-						input: formatDetail(block.input)
+						input: formatDetail(block.input),
+						task: buildTaskActivity(String(block.name), block.input)
 					};
 					if (block.name === 'AskUserQuestion') {
 						activity.questions = buildQuestions(block.input);
@@ -422,6 +549,21 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 				};
 				messages.push(message);
 				lastAssistant = message;
+			}
+		}
+
+		if (entry.type === 'attachment' && entry.attachment.type === 'task_reminder') {
+			const tasks = entry.attachment.content
+				.map(taskReminderView)
+				.filter((task): task is TaskView => task !== undefined);
+			if (tasks.length > 0) {
+				messages.push({
+					id: entry.uuid || `claude-task-reminder-${index}`,
+					role: 'tool',
+					timestamp: entry.timestamp,
+					parts: [{ kind: 'tool', tool: { label: 'Task list', tasks } }],
+					tools: []
+				});
 			}
 		}
 	});
@@ -478,7 +620,8 @@ function cursorView(data: CursorSessionEntry[]): SessionView {
 			} else if (block.type === 'tool_use') {
 				const activity: ToolActivity = {
 					label: block.name,
-					input: formatDetail(block.input)
+					input: formatDetail(block.input),
+					task: buildTaskActivity(block.name, block.input)
 				};
 				if (block.name === 'AskUserQuestion') {
 					activity.questions = buildQuestions(block.input);
@@ -491,8 +634,8 @@ function cursorView(data: CursorSessionEntry[]): SessionView {
 				const isError = block.is_error ?? false;
 				if (activity) {
 					activity.output = output;
-					activity.isError = isError;
-					if (activity.questions) applyAnswers(activity.questions, block.content);
+					applyStructuredToolResult(activity, block.content);
+					activity.isError = isError || activity.task?.success === false;
 				} else {
 					parts.push({
 						kind: 'tool',

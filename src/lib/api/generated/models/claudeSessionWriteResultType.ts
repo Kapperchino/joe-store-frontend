@@ -10,4 +10,5 @@ export type ClaudeSessionWriteResultType = typeof ClaudeSessionWriteResultType[k
 
 export const ClaudeSessionWriteResultType = {
   create: 'create',
+  update: 'update',
 } as const;

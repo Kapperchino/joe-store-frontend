@@ -8,9 +8,11 @@ import type { ClaudeSessionAskUserQuestionInput } from './claudeSessionAskUserQu
 import type { ClaudeSessionBashInput } from './claudeSessionBashInput.ts';
 import type { ClaudeSessionEditInput } from './claudeSessionEditInput.ts';
 import type { ClaudeSessionReadInput } from './claudeSessionReadInput.ts';
+import type { ClaudeSessionTaskCreateInput } from './claudeSessionTaskCreateInput.ts';
+import type { ClaudeSessionTaskUpdateInput } from './claudeSessionTaskUpdateInput.ts';
 import type { ClaudeSessionToolSearchInput } from './claudeSessionToolSearchInput.ts';
 import type { ClaudeSessionWebFetchInput } from './claudeSessionWebFetchInput.ts';
 import type { ClaudeSessionWebSearchInput } from './claudeSessionWebSearchInput.ts';
 import type { ClaudeSessionWriteInput } from './claudeSessionWriteInput.ts';
 
-export type ClaudeSessionToolInput = ClaudeSessionBashInput | ClaudeSessionReadInput | ClaudeSessionToolSearchInput | ClaudeSessionWebFetchInput | ClaudeSessionWebSearchInput | ClaudeSessionEditInput | ClaudeSessionWriteInput | ClaudeSessionAskUserQuestionInput;
+export type ClaudeSessionToolInput = ClaudeSessionBashInput | ClaudeSessionReadInput | ClaudeSessionToolSearchInput | ClaudeSessionWebFetchInput | ClaudeSessionWebSearchInput | ClaudeSessionEditInput | ClaudeSessionWriteInput | ClaudeSessionAskUserQuestionInput | ClaudeSessionTaskCreateInput | ClaudeSessionTaskUpdateInput;

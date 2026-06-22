@@ -8,9 +8,11 @@ import type { ClaudeSessionAskUserQuestionResult } from './claudeSessionAskUserQ
 import type { ClaudeSessionBashToolResult } from './claudeSessionBashToolResult.ts';
 import type { ClaudeSessionEditToolResult } from './claudeSessionEditToolResult.ts';
 import type { ClaudeSessionReadToolResult } from './claudeSessionReadToolResult.ts';
+import type { ClaudeSessionTaskCreateResult } from './claudeSessionTaskCreateResult.ts';
+import type { ClaudeSessionTaskUpdateResult } from './claudeSessionTaskUpdateResult.ts';
 import type { ClaudeSessionToolSearchToolResult } from './claudeSessionToolSearchToolResult.ts';
 import type { ClaudeSessionWebFetchToolResult } from './claudeSessionWebFetchToolResult.ts';
 import type { ClaudeSessionWebSearchToolResult } from './claudeSessionWebSearchToolResult.ts';
 import type { ClaudeSessionWriteToolResult } from './claudeSessionWriteToolResult.ts';
 
-export type ClaudeSessionToolUseResult = ClaudeSessionBashToolResult | ClaudeSessionWebFetchToolResult | ClaudeSessionToolSearchToolResult | ClaudeSessionWebSearchToolResult | ClaudeSessionReadToolResult | ClaudeSessionEditToolResult | ClaudeSessionWriteToolResult | ClaudeSessionAskUserQuestionResult | string;
+export type ClaudeSessionToolUseResult = ClaudeSessionBashToolResult | ClaudeSessionWebFetchToolResult | ClaudeSessionToolSearchToolResult | ClaudeSessionWebSearchToolResult | ClaudeSessionReadToolResult | ClaudeSessionEditToolResult | ClaudeSessionWriteToolResult | ClaudeSessionAskUserQuestionResult | ClaudeSessionTaskCreateResult | ClaudeSessionTaskUpdateResult | string;

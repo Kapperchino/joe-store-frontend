@@ -5,12 +5,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ClaudeSessionTaskReminderItem {
-  activeForm: string;
-  blockedBy: string[];
-  blocks: string[];
+export interface ClaudeSessionTaskCreateInput {
+  /** @nullable */
+  activeForm?: string | null;
   description: string;
-  id: string;
-  status: string;
+  metadata?: unknown;
   subject: string;
 }

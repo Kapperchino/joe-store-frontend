@@ -17,4 +17,6 @@ export const ClaudeSessionToolName = {
   Edit: 'Edit',
   Write: 'Write',
   AskUserQuestion: 'AskUserQuestion',
+  TaskCreate: 'TaskCreate',
+  TaskUpdate: 'TaskUpdate',
 } as const;
