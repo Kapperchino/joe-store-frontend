@@ -97,7 +97,7 @@
 					href="#how-it-works">How it works</a
 				>
 				<ThemeToggle />
-				<Button href={resolve('/login')} size="sm">Sign in</Button>
+				<Button href={resolve('/user')} size="sm">My sessions</Button>
 			</nav>
 		</div>
 	</header>
@@ -220,7 +220,7 @@
 						Install the skill
 						<ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
 					</Button>
-					<Button href={resolve('/login')} variant="outline" size="lg">Sign in</Button>
+					<Button href={resolve('/user')} variant="outline" size="lg">My sessions</Button>
 				</Card.Footer>
 			</Card.Root>
 		</section>
@@ -245,7 +245,7 @@
 					target="_blank"
 					rel="noreferrer">GitHub</a
 				>
-				<a class="transition-colors hover:text-foreground" href={resolve('/login')}>Sign in</a>
+				<a class="transition-colors hover:text-foreground" href={resolve('/user')}>My sessions</a>
 			</div>
 		</div>
 	</footer>

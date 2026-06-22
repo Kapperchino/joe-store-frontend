@@ -6,8 +6,10 @@
  */
 import type {
   ErrorResponse,
+  GetUserSessionsRes,
   PutSessionReq,
-  PutSessionResponse
+  PutSessionResponse,
+  Session
 } from '../models';
 
 
@@ -64,7 +66,7 @@ export const putSession = async (putSessionReq: PutSessionReq, options?: Request
 
 
 export type getSessionResponse200 = {
-  data: PutSessionReq
+  data: Session
   status: 200
 }
 
@@ -108,5 +110,51 @@ export const getSession = async (sessionId: number, options?: RequestInit): Prom
   return { data, status: res.status, headers: res.headers } as getSessionResponse
 }
 
+
+
+export type getUserSessionsResponse200 = {
+  data: GetUserSessionsRes
+  status: 200
+}
+
+export type getUserSessionsResponse500 = {
+  data: ErrorResponse
+  status: 500
+}
+
+export type getUserSessionsResponseSuccess = (getUserSessionsResponse200) & {
+  headers: Headers;
+};
+export type getUserSessionsResponseError = (getUserSessionsResponse500) & {
+  headers: Headers;
+};
+
+export type getUserSessionsResponse = (getUserSessionsResponseSuccess | getUserSessionsResponseError)
+
+export const getGetUserSessionsUrl = (userId: string,) => {
+
+
+
+
+  return `https://joe-store.onrender.com/user/${userId}`
+}
+
+export const getUserSessions = async (userId: string, options?: RequestInit): Promise<getUserSessionsResponse> => {
+
+  const res = await fetch(getGetUserSessionsUrl(userId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getUserSessionsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getUserSessionsResponse
+}
 
 

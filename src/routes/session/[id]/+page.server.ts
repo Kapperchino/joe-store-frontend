@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	}
 
 	if (response.status === 200) {
-		return { sessionId: params.id, session: createSessionView(response.data.session) };
+		return { sessionId: params.id, session: createSessionView(response.data) };
 	}
 
 	const backendMessage = 'error' in response.data ? response.data.error : undefined;
