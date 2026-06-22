@@ -5,6 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ClaudeSessionEntry } from './claudeSessionEntry.ts';
+import type { CursorSessionEntry } from './cursorSessionEntry.ts';
 import type { OpenAISessionEntry } from './openAISessionEntry.ts';
 
 export type Session = {
@@ -13,4 +14,7 @@ export type Session = {
 } | {
   data: ClaudeSessionEntry[];
   type: 'claude';
+} | {
+  data: CursorSessionEntry[];
+  type: 'cursor';
 };

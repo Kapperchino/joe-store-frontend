@@ -6,6 +6,7 @@
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import OctagonXIcon from '@lucide/svelte/icons/octagon-x';
+	import MousePointer2Icon from '@lucide/svelte/icons/mouse-pointer-2';
 	import { Button } from '$lib/components/ui/button';
 	import Markdown from '$lib/components/markdown.svelte';
 	import ToolActivity from './tool-activity.svelte';
@@ -13,6 +14,7 @@
 	import ClaudeIcon from './claude-icon.svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import type { PageProps } from './$types';
+	import { providerLabel } from '$lib/provider';
 	import CommandChip from './command-chip.svelte';
 	import NotificationChip from './notification-chip.svelte';
 	import type {
@@ -94,7 +96,7 @@
 
 	const properties = $derived(
 		[
-			{ label: 'Provider', value: data.session.provider === 'openai' ? 'OpenAI' : 'Claude' },
+			{ label: 'Provider', value: providerLabel(data.session.provider) },
 			{ label: 'Model', value: data.session.model ?? 'Unknown' },
 			{ label: 'Entries', value: data.session.entryCount.toLocaleString() },
 			{ label: 'Messages', value: data.session.messages.length.toLocaleString() },
@@ -198,6 +200,8 @@
 							{#if message.role === 'assistant'}
 								{#if data.session.provider === 'openai'}
 									<OpenAIIcon class="size-3.5" />
+								{:else if data.session.provider === 'cursor'}
+									<MousePointer2Icon class="size-3.5" aria-hidden="true" />
 								{:else}
 									<ClaudeIcon class="size-3.5" />
 								{/if}
@@ -249,6 +253,8 @@
 								{:else if message.role === 'assistant'}
 									{#if data.session.provider === 'openai'}
 										<OpenAIIcon class="size-4" />
+									{:else if data.session.provider === 'cursor'}
+										<MousePointer2Icon class="size-4" aria-hidden="true" />
 									{:else}
 										<ClaudeIcon class="size-4" />
 									{/if}

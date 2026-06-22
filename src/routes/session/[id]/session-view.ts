@@ -1,4 +1,4 @@
-import type { ClaudeSessionEntry, OpenAISessionEntry, Session } from '$lib/api';
+import type { ClaudeSessionEntry, CursorSessionEntry, OpenAISessionEntry, Session } from '$lib/api';
 import { renderMarkdown } from './markdown.server';
 
 export type SessionRole = 'user' | 'assistant' | 'tool';
@@ -455,6 +455,76 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 	};
 }
 
+function cursorView(data: CursorSessionEntry[]): SessionView {
+	const messages: SessionMessageView[] = [];
+	// Cursor tool calls do not expose their ids in the session payload, while
+	// results do. Pair calls and results in arrival order instead.
+	const pendingTools: ToolActivity[] = [];
+
+	data.forEach((entry, index) => {
+		if ('type' in entry) return;
+
+		const parts: MessagePart[] = [];
+		let hasUserContent = false;
+		for (const block of entry.message.content) {
+			if (block.type === 'text') {
+				if (entry.role === 'user') {
+					const previousPartCount = parts.length;
+					appendUserText(parts, block.text);
+					hasUserContent ||= parts.length > previousPartCount;
+				} else {
+					appendText(parts, block.text);
+				}
+			} else if (block.type === 'tool_use') {
+				const activity: ToolActivity = {
+					label: block.name,
+					input: formatDetail(block.input)
+				};
+				if (block.name === 'AskUserQuestion') {
+					activity.questions = buildQuestions(block.input);
+				}
+				parts.push({ kind: 'tool', tool: activity });
+				pendingTools.push(activity);
+			} else if (block.type === 'tool_result') {
+				const activity = pendingTools.shift();
+				const output = formatDetail(block.content);
+				const isError = block.is_error ?? false;
+				if (activity) {
+					activity.output = output;
+					activity.isError = isError;
+					if (activity.questions) applyAnswers(activity.questions, block.content);
+				} else {
+					parts.push({
+						kind: 'tool',
+						tool: { label: isError ? 'Tool error' : 'Tool result', output, isError }
+					});
+				}
+			} else if (block.type === 'image') {
+				appendText(parts, '[Image attachment]');
+				hasUserContent ||= entry.role === 'user';
+			}
+		}
+
+		if (parts.length === 0) return;
+		messages.push({
+			id: `cursor-${index}`,
+			role: entry.role === 'user' && !hasUserContent ? 'tool' : entry.role,
+			parts,
+			tools: []
+		});
+	});
+
+	messages.forEach(finalizeMessage);
+
+	return {
+		provider: 'cursor',
+		title:
+			titleFromText(messages.find((message) => message.role === 'user')?.text) ?? 'Cursor session',
+		entryCount: data.length,
+		messages
+	};
+}
+
 function openAIView(data: OpenAISessionEntry[]): SessionView {
 	const messages: SessionMessageView[] = [];
 	const hasConversationItems = data.some(
@@ -615,6 +685,11 @@ function mergeAgentTurns(messages: SessionMessageView[]): SessionMessageView[] {
 }
 
 export function createSessionView(session: Session): SessionView {
-	const view = session.type === 'claude' ? claudeView(session.data) : openAIView(session.data);
+	const view =
+		session.type === 'claude'
+			? claudeView(session.data)
+			: session.type === 'cursor'
+				? cursorView(session.data)
+				: openAIView(session.data);
 	return { ...view, messages: mergeAgentTurns(view.messages) };
 }

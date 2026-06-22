@@ -13,6 +13,7 @@
 	import { Spinner } from '$lib/components/ui/spinner';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import type { ErrorResponse, GetUserSessionsRes, SessionWithMeta } from '$lib/api';
+	import { providerLabel } from '$lib/provider';
 	import {
 		getBrowserSupabaseClient,
 		storeAuthTokens,
@@ -36,10 +37,6 @@
 
 	function sessionTitle(topic: string | null | undefined, id: number): string {
 		return topic?.trim() || `Untitled session #${id}`;
-	}
-
-	function providerLabel(provider: 'openai' | 'claude'): string {
-		return provider === 'openai' ? 'OpenAI' : 'Claude';
 	}
 
 	function formatCreatedTime(value: string): string {

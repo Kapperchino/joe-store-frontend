@@ -11,4 +11,5 @@ export type ProviderType = typeof ProviderType[keyof typeof ProviderType];
 export const ProviderType = {
   openai: 'openai',
   claude: 'claude',
+  cursor: 'cursor',
 } as const;
