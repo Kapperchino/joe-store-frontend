@@ -3,18 +3,19 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import CloudUploadIcon from '@lucide/svelte/icons/cloud-upload';
-	import CodeXmlIcon from '@lucide/svelte/icons/code-xml';
 	import CopyIcon from '@lucide/svelte/icons/copy';
-	import FileTextIcon from '@lucide/svelte/icons/file-text';
 	import PackagePlusIcon from '@lucide/svelte/icons/package-plus';
 	import Share2Icon from '@lucide/svelte/icons/share-2';
 	import StoreIcon from '@lucide/svelte/icons/store';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
-	import WrenchIcon from '@lucide/svelte/icons/wrench';
+	import UserIcon from '@lucide/svelte/icons/user';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
+	import OpenAIIcon from './session/[id]/openai-icon.svelte';
+	import ToolActivity from './session/[id]/tool-activity.svelte';
+	import type { ToolActivity as ToolActivityData } from './session/[id]/session-view';
 
 	const skillUrl = 'https://www.skills.sh/kapperchino/joe-store-skills';
 	const installCmd = 'npx skills add kapperchino/joe-store-skills';
@@ -31,23 +32,32 @@
 		}
 	}
 
-	const transcriptItems = [
+	const exampleTools = [
 		{
-			icon: FileTextIcon,
-			label: 'Your prompt',
-			body: 'Add CSV export to the account activity page.'
+			label: 'Search',
+			input: JSON.stringify({ pattern: 'account activity', path: 'src/routes' }),
+			output: 'src/routes/account/activity/+page.svelte\nsrc/lib/api/activity.ts'
 		},
 		{
-			icon: WrenchIcon,
-			label: 'Agent work',
-			body: 'Inspected the data flow, updated the route, and ran the checks.'
+			label: 'Read',
+			input: JSON.stringify({ file_path: 'src/routes/account/activity/+page.svelte' })
 		},
 		{
-			icon: CodeXmlIcon,
-			label: 'Code changes',
-			body: '3 files changed with the complete diff attached.'
+			label: 'Edit',
+			input: JSON.stringify({
+				file_path: 'src/routes/account/activity/+page.svelte',
+				old_string: '<Button variant="outline">Filter</Button>',
+				new_string:
+					'<Button variant="outline">Filter</Button>\n<Button onclick={exportCsv}>Export CSV</Button>'
+			}),
+			output: 'Updated src/routes/account/activity/+page.svelte'
+		},
+		{
+			label: 'Bash',
+			input: JSON.stringify({ command: 'npm run check' }),
+			output: 'svelte-check found 0 errors and 0 warnings'
 		}
-	];
+	] satisfies ToolActivityData[];
 
 	const steps = [
 		{
@@ -146,24 +156,70 @@
 				</div>
 			</div>
 
-			<Card.Root class="overflow-hidden">
+			<Card.Root>
 				<Card.Header>
-					<Card.Title>A session anyone can follow</Card.Title>
-					<Card.Description>Example transcript</Card.Description>
+					<Card.Title>Account activity CSV export</Card.Title>
+					<Card.Description>Example transcript · OpenAI</Card.Description>
 				</Card.Header>
 				<Card.Content class="flex flex-col gap-5">
-					{#each transcriptItems as item (item.label)}
-						{@const Icon = item.icon}
-						<div class="flex gap-3">
-							<span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-								<Icon class="size-4 text-muted-foreground" aria-hidden="true" />
-							</span>
-							<div class="flex min-w-0 flex-col gap-1">
-								<p class="text-sm font-medium">{item.label}</p>
-								<p class="text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+					<article>
+						<header class="mb-3 flex items-center justify-between gap-3">
+							<div class="flex items-center gap-2.5">
+								<span
+									class="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground"
+								>
+									<UserIcon class="size-4" aria-hidden="true" />
+								</span>
+								<h3 class="text-sm font-semibold tracking-tight">User</h3>
+							</div>
+							<time class="text-xs text-muted-foreground" datetime="2026-06-21T10:42:00">
+								10:42 AM
+							</time>
+						</header>
+						<p class="text-sm leading-relaxed sm:pl-9.5">
+							Add CSV export to the account activity page. Include the active filters and keep the
+							existing layout intact.
+						</p>
+					</article>
+
+					<Separator />
+
+					<article>
+						<header class="mb-3 flex items-center justify-between gap-3">
+							<div class="flex items-center gap-2.5">
+								<span
+									class="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground"
+								>
+									<OpenAIIcon class="size-4" />
+								</span>
+								<h3 class="text-sm font-semibold tracking-tight">Assistant</h3>
+							</div>
+							<time class="text-xs text-muted-foreground" datetime="2026-06-21T10:44:00">
+								10:44 AM
+							</time>
+						</header>
+
+						<div class="flex flex-col gap-4 sm:pl-9.5">
+							<p class="text-sm leading-relaxed">
+								I’ll trace the activity data flow, add the export, and run the project checks.
+							</p>
+
+							<div class="flex flex-col gap-1.5">
+								{#each exampleTools as tool (tool.label)}
+									<ToolActivity {tool} />
+								{/each}
+							</div>
+
+							<div class="flex flex-col gap-2 text-sm leading-relaxed">
+								<p class="font-medium">Implemented and verified.</p>
+								<ul class="list-disc pl-5 text-muted-foreground">
+									<li>Exports the filtered activity rows as CSV</li>
+									<li>Preserves the current page layout</li>
+									<li>Project checks pass with no warnings</li>
+								</ul>
 							</div>
 						</div>
-					{/each}
+					</article>
 				</Card.Content>
 				<Card.Footer class="flex items-center gap-2">
 					<CheckIcon class="size-4" aria-hidden="true" />
