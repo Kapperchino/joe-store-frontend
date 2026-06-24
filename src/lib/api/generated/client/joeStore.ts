@@ -6,10 +6,12 @@
  */
 import type {
   ErrorResponse,
+  GetSessionRes,
   GetUserSessionsRes,
+  GrantSessionAuthReq,
+  GrantSessionAuthRes,
   PutSessionReq,
-  PutSessionResponse,
-  Session
+  PutSessionResponse
 } from '../models';
 
 
@@ -66,7 +68,7 @@ export const putSession = async (putSessionReq: PutSessionReq, options?: Request
 
 
 export type getSessionResponse200 = {
-  data: Session
+  data: GetSessionRes
   status: 200
 }
 
@@ -108,6 +110,69 @@ export const getSession = async (sessionId: number, options?: RequestInit): Prom
 
   const data: getSessionResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getSessionResponse
+}
+
+
+
+export type grantSessionAuthorizationResponse200 = {
+  data: GrantSessionAuthRes
+  status: 200
+}
+
+export type grantSessionAuthorizationResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type grantSessionAuthorizationResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type grantSessionAuthorizationResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type grantSessionAuthorizationResponse500 = {
+  data: ErrorResponse
+  status: 500
+}
+
+export type grantSessionAuthorizationResponseSuccess = (grantSessionAuthorizationResponse200) & {
+  headers: Headers;
+};
+export type grantSessionAuthorizationResponseError = (grantSessionAuthorizationResponse400 | grantSessionAuthorizationResponse401 | grantSessionAuthorizationResponse403 | grantSessionAuthorizationResponse500) & {
+  headers: Headers;
+};
+
+export type grantSessionAuthorizationResponse = (grantSessionAuthorizationResponseSuccess | grantSessionAuthorizationResponseError)
+
+export const getGrantSessionAuthorizationUrl = (sessionId: number,) => {
+
+
+
+
+  return `https://joe-store.onrender.com/session/${sessionId}/authorization`
+}
+
+export const grantSessionAuthorization = async (sessionId: number,
+    grantSessionAuthReq: GrantSessionAuthReq, options?: RequestInit): Promise<grantSessionAuthorizationResponse> => {
+
+  const res = await fetch(getGrantSessionAuthorizationUrl(sessionId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(grantSessionAuthReq)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: grantSessionAuthorizationResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as grantSessionAuthorizationResponse
 }
 
 

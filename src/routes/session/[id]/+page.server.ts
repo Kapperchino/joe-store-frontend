@@ -1,9 +1,10 @@
 import { getSession } from '$lib/api';
+import { AUTH_TOKEN_STORAGE_KEYS } from '$lib/auth';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { createSessionView } from './session-view';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ cookies, locals, params }) => {
 	if (!/^\d+$/.test(params.id)) {
 		error(400, 'The session ID must be a positive integer.');
 	}
@@ -15,13 +16,23 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	let response: Awaited<ReturnType<typeof getSession>>;
 	try {
-		response = await getSession(sessionId);
+		const {
+			data: { session }
+		} = await locals.supabase.auth.getSession();
+		const accessToken = session?.access_token ?? cookies.get(AUTH_TOKEN_STORAGE_KEYS.accessToken);
+		const options = accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined;
+
+		response = await getSession(sessionId, options);
 	} catch {
 		error(502, 'Joe Store could not reach the session service. Please try again shortly.');
 	}
 
 	if (response.status === 200) {
-		return { sessionId: params.id, session: createSessionView(response.data) };
+		return {
+			sessionId: params.id,
+			authType: response.data.auth_type,
+			session: createSessionView(response.data.session)
+		};
 	}
 
 	const backendMessage = 'error' in response.data ? response.data.error : undefined;

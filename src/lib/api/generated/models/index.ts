@@ -5,6 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './authType.ts';
 export * from './cacheCreation.ts';
 export * from './claudeSessionAskUserQuestion.ts';
 export * from './claudeSessionAskUserQuestionAnnotation.ts';
@@ -85,7 +86,10 @@ export * from './cursorSessionEntry.ts';
 export * from './cursorSessionEvent.ts';
 export * from './cursorSessionMessage.ts';
 export * from './errorResponse.ts';
+export * from './getSessionRes.ts';
 export * from './getUserSessionsRes.ts';
+export * from './grantSessionAuthReq.ts';
+export * from './grantSessionAuthRes.ts';
 export * from './openAIEventMessage.ts';
 export * from './openAIPatchChange.ts';
 export * from './openAIRateLimits.ts';

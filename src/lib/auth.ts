@@ -10,6 +10,21 @@ export const AUTH_TOKEN_STORAGE_KEYS = {
 
 let browserClient: SupabaseClient | undefined;
 
+function authCookieAttributes(maxAgeSeconds: number): string {
+	const secure = browser && window.location.protocol === 'https:' ? '; Secure' : '';
+	return `Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`;
+}
+
+function setAccessTokenCookie(session: Session): void {
+	const now = Math.floor(Date.now() / 1000);
+	const maxAgeSeconds = Math.max(0, (session.expires_at ?? now + (session.expires_in ?? 3600)) - now);
+	document.cookie = `${AUTH_TOKEN_STORAGE_KEYS.accessToken}=${encodeURIComponent(session.access_token)}; ${authCookieAttributes(maxAgeSeconds)}`;
+}
+
+function clearAccessTokenCookie(): void {
+	document.cookie = `${AUTH_TOKEN_STORAGE_KEYS.accessToken}=; ${authCookieAttributes(0)}`;
+}
+
 export function getSafeRedirect(path: FormDataEntryValue | string | null | undefined): string {
 	if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) {
 		return '/';
@@ -41,11 +56,13 @@ export function storeAuthTokens(session: Session | null): void {
 	if (!session) {
 		localStorage.removeItem(AUTH_TOKEN_STORAGE_KEYS.accessToken);
 		localStorage.removeItem(AUTH_TOKEN_STORAGE_KEYS.refreshToken);
+		clearAccessTokenCookie();
 		return;
 	}
 
 	localStorage.setItem(AUTH_TOKEN_STORAGE_KEYS.accessToken, session.access_token);
 	localStorage.setItem(AUTH_TOKEN_STORAGE_KEYS.refreshToken, session.refresh_token);
+	setAccessTokenCookie(session);
 }
 
 export function getStoredAccessToken(): string | null {

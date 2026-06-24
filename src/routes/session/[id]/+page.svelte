@@ -1,20 +1,33 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
+	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
+	import Share2Icon from '@lucide/svelte/icons/share-2';
 	import UserIcon from '@lucide/svelte/icons/user';
+	import UsersIcon from '@lucide/svelte/icons/users';
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
+	import GlobeIcon from '@lucide/svelte/icons/globe';
+	import LockIcon from '@lucide/svelte/icons/lock';
 	import OctagonXIcon from '@lucide/svelte/icons/octagon-x';
 	import MousePointer2Icon from '@lucide/svelte/icons/mouse-pointer-2';
-	import { Button } from '$lib/components/ui/button';
+	import * as Alert from '$lib/components/ui/alert';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button, buttonVariants } from '$lib/components/ui/button';
+	import * as Popover from '$lib/components/ui/popover';
+	import { Separator } from '$lib/components/ui/separator';
+	import { Spinner } from '$lib/components/ui/spinner';
 	import Markdown from '$lib/components/markdown.svelte';
 	import ToolActivity from './tool-activity.svelte';
 	import OpenAIIcon from './openai-icon.svelte';
 	import ClaudeIcon from './claude-icon.svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import type { PageProps } from './$types';
+	import type { AuthType, ErrorResponse, GrantSessionAuthRes } from '$lib/api';
 	import { providerLabel } from '$lib/provider';
+	import { withStoredAccessToken } from '$lib/auth';
 	import CommandChip from './command-chip.svelte';
 	import NotificationChip from './notification-chip.svelte';
 	import type {
@@ -26,6 +39,19 @@
 	import { SvelteSet } from 'svelte/reactivity';
 
 	let { data }: PageProps = $props();
+
+	type AuthorizationAction = 'public' | 'private' | 'users';
+	type BadgeVariant = 'default' | 'secondary' | 'outline';
+
+	type SessionAuthOverride = { sessionId: string; authType: AuthType };
+	type SessionShareDraft = { sessionId: string; value: string };
+	type SessionAuthFeedback = { sessionId: string; error: string | null; notice: string | null };
+	type SessionPendingAuth = { sessionId: string; action: AuthorizationAction };
+
+	let authOverride = $state<SessionAuthOverride | null>(null);
+	let shareUsersDraft = $state<SessionShareDraft | null>(null);
+	let authFeedback = $state<SessionAuthFeedback | null>(null);
+	let pendingAuthorization = $state<SessionPendingAuth | null>(null);
 
 	// Render parts in order, but keep runs of consecutive tools together so they
 	// stay tightly spaced while interleaved text breaks them into separate groups.
@@ -113,6 +139,130 @@
 				: [])
 		] as Array<{ label: string; value: string; mono?: boolean }>
 	);
+
+	const authType = $derived(
+		authOverride?.sessionId === data.sessionId ? authOverride.authType : data.authType
+	);
+	const shareUsersInput = $derived(
+		shareUsersDraft?.sessionId === data.sessionId
+			? shareUsersDraft.value
+			: usersFromAuthType(authType).join('\n')
+	);
+	const authError = $derived(authFeedback?.sessionId === data.sessionId ? authFeedback.error : null);
+	const authNotice = $derived(
+		authFeedback?.sessionId === data.sessionId ? authFeedback.notice : null
+	);
+	const pendingAuthAction = $derived(
+		pendingAuthorization?.sessionId === data.sessionId ? pendingAuthorization.action : null
+	);
+	const sharedUsers = $derived(usersFromAuthType(authType));
+	const authorizationPending = $derived(pendingAuthAction !== null);
+
+	function usersFromAuthType(value: AuthType): string[] {
+		return typeof value === 'object' && value !== null && 'users' in value ? value.users : [];
+	}
+
+	function authTypeLabel(value: AuthType): string {
+		if (value === 'public') return 'Public';
+		if (value === 'private') return 'Private';
+		const userCount = usersFromAuthType(value).length;
+		return userCount === 1 ? 'Shared with 1 user' : `Shared with ${userCount} users`;
+	}
+
+	function authTypeDescription(value: AuthType): string {
+		if (value === 'public') return 'Anyone with the link';
+		if (value === 'private') return 'Only the owner';
+		const userCount = usersFromAuthType(value).length;
+		return userCount === 1 ? 'One approved user' : `${userCount} approved users`;
+	}
+
+	function authTypeBadgeVariant(value: AuthType): BadgeVariant {
+		if (value === 'public') return 'default';
+		if (value === 'private') return 'outline';
+		return 'secondary';
+	}
+
+	function parseShareUsers(value: string): string[] {
+		return [...new Set(value.split(/[\s,;]+/).map((user) => user.trim()).filter(Boolean))];
+	}
+
+	function authorizationNotice(value: AuthType): string {
+		if (value === 'public') return 'Session is public.';
+		if (value === 'private') return 'Session is private.';
+		return authTypeLabel(value) + '.';
+	}
+
+	function setAuthFeedback(sessionId: string, error: string | null, notice: string | null): void {
+		authFeedback = { sessionId, error, notice };
+	}
+
+	function updateShareUsersInput(event: Event): void {
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLTextAreaElement)) return;
+		shareUsersDraft = { sessionId: data.sessionId, value: target.value };
+	}
+
+	async function updateAuthorization(nextAuthType: AuthType, action: AuthorizationAction): Promise<void> {
+		const sessionId = data.sessionId;
+		setAuthFeedback(sessionId, null, null);
+		pendingAuthorization = { sessionId, action };
+
+		try {
+			const response = await fetch(
+				resolve('/api/session/[id]/authorization', { id: sessionId }),
+				withStoredAccessToken({
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ auth_type: nextAuthType })
+				})
+			);
+			const payload = (await response.json()) as GrantSessionAuthRes | ErrorResponse;
+
+			if (response.ok && 'auth_type' in payload) {
+				authOverride = { sessionId, authType: payload.auth_type };
+				shareUsersDraft = {
+					sessionId,
+					value: usersFromAuthType(payload.auth_type).join('\n')
+				};
+				setAuthFeedback(sessionId, null, authorizationNotice(payload.auth_type));
+				return;
+			}
+
+			setAuthFeedback(
+				sessionId,
+				'error' in payload
+					? payload.error
+					: 'Joe Store could not update this session access.',
+				null
+			);
+		} catch {
+			setAuthFeedback(
+				sessionId,
+				'Joe Store could not reach the session service. Please try again shortly.',
+				null
+			);
+		} finally {
+			if (
+				pendingAuthorization?.sessionId === sessionId &&
+				pendingAuthorization.action === action
+			) {
+				pendingAuthorization = null;
+			}
+		}
+	}
+
+	async function shareWithUsers(event: SubmitEvent): Promise<void> {
+		event.preventDefault();
+
+		const sessionId = data.sessionId;
+		const users = parseShareUsers(shareUsersInput);
+		if (users.length === 0) {
+			setAuthFeedback(sessionId, 'Add at least one user before sharing this session.', null);
+			return;
+		}
+
+		await updateAuthorization({ users }, 'users');
+	}
 </script>
 
 <svelte:head>
@@ -131,7 +281,140 @@
 		</div>
 
 		<header class="mb-8">
-			<h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{data.session.title}</h1>
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+				<div class="min-w-0 flex flex-col gap-3">
+					<h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{data.session.title}</h1>
+					<div class="flex flex-wrap items-center gap-2">
+						<Badge variant={authTypeBadgeVariant(authType)}>
+							{#if authType === 'public'}
+								<GlobeIcon data-icon="inline-start" aria-hidden="true" />
+							{:else if authType === 'private'}
+								<LockIcon data-icon="inline-start" aria-hidden="true" />
+							{:else}
+								<UsersIcon data-icon="inline-start" aria-hidden="true" />
+							{/if}
+							{authTypeLabel(authType)}
+						</Badge>
+						<span class="text-sm text-muted-foreground">{authTypeDescription(authType)}</span>
+					</div>
+				</div>
+
+				<Popover.Root>
+					<Popover.Trigger class={buttonVariants({ variant: 'outline', size: 'sm' })}>
+						<Share2Icon data-icon="inline-start" aria-hidden="true" />
+						Share
+					</Popover.Trigger>
+
+					<Popover.Content>
+						<div class="flex flex-col gap-4">
+							<div class="flex items-start justify-between gap-3">
+								<div class="flex flex-col gap-1">
+									<h2 class="text-sm font-semibold tracking-tight">Session access</h2>
+									<p class="text-sm text-muted-foreground">{authTypeDescription(authType)}</p>
+								</div>
+
+								<Badge variant={authTypeBadgeVariant(authType)}>
+									{#if authType === 'public'}
+										<GlobeIcon data-icon="inline-start" aria-hidden="true" />
+									{:else if authType === 'private'}
+										<LockIcon data-icon="inline-start" aria-hidden="true" />
+									{:else}
+										<UsersIcon data-icon="inline-start" aria-hidden="true" />
+									{/if}
+									{authTypeLabel(authType)}
+								</Badge>
+							</div>
+
+							{#if authError}
+								<Alert.Root variant="destructive">
+									<CircleAlertIcon aria-hidden="true" />
+									<Alert.Title>Unable to update access</Alert.Title>
+									<Alert.Description>{authError}</Alert.Description>
+								</Alert.Root>
+							{/if}
+
+							{#if authNotice}
+								<Alert.Root>
+									<CircleCheckIcon aria-hidden="true" />
+									<Alert.Title>Access updated</Alert.Title>
+									<Alert.Description>{authNotice}</Alert.Description>
+								</Alert.Root>
+							{/if}
+
+							<form class="flex flex-col gap-3" onsubmit={shareWithUsers}>
+								<div class="flex flex-col gap-1.5">
+									<label for="share-users" class="text-sm font-medium">Shared users</label>
+									<textarea
+										id="share-users"
+										value={shareUsersInput}
+										oninput={updateShareUsersInput}
+										rows="3"
+										aria-invalid={authError ? 'true' : undefined}
+										disabled={authorizationPending}
+										class="min-h-24 w-full resize-y rounded-2xl border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20"
+										placeholder="user_id_1, user_id_2"
+									></textarea>
+								</div>
+
+								<div class="flex flex-wrap items-center gap-2">
+									<Button type="submit" variant="outline" size="sm" disabled={authorizationPending}>
+										{#if pendingAuthAction === 'users'}
+											<Spinner data-icon="inline-start" />
+											Sharing...
+										{:else}
+											<UsersIcon data-icon="inline-start" aria-hidden="true" />
+											Share with users
+										{/if}
+									</Button>
+
+									{#if sharedUsers.length > 0}
+										<div class="flex min-w-0 flex-1 flex-wrap gap-1.5">
+											{#each sharedUsers as user (user)}
+												<Badge variant="outline" class="max-w-full truncate font-mono">{user}</Badge>
+											{/each}
+										</div>
+									{/if}
+								</div>
+							</form>
+
+							<Separator />
+
+							<div class="flex flex-wrap gap-2">
+								<Button
+									type="button"
+									variant={authType === 'public' ? 'secondary' : 'outline'}
+									size="sm"
+									disabled={authorizationPending || authType === 'public'}
+									onclick={() => updateAuthorization('public', 'public')}
+								>
+									{#if pendingAuthAction === 'public'}
+										<Spinner data-icon="inline-start" />
+										Saving...
+									{:else}
+										<GlobeIcon data-icon="inline-start" aria-hidden="true" />
+										Make public
+									{/if}
+								</Button>
+								<Button
+									type="button"
+									variant={authType === 'private' ? 'secondary' : 'outline'}
+									size="sm"
+									disabled={authorizationPending || authType === 'private'}
+									onclick={() => updateAuthorization('private', 'private')}
+								>
+									{#if pendingAuthAction === 'private'}
+										<Spinner data-icon="inline-start" />
+										Saving...
+									{:else}
+										<LockIcon data-icon="inline-start" aria-hidden="true" />
+										Make private
+									{/if}
+								</Button>
+							</div>
+						</div>
+					</Popover.Content>
+				</Popover.Root>
+			</div>
 
 			<dl class="mt-6 flex flex-col gap-px">
 				{#each properties as property (property.label)}
@@ -147,7 +430,7 @@
 			</dl>
 		</header>
 
-		<hr class="mb-2 border-border" />
+		<Separator class="mb-2" />
 
 		<section aria-labelledby="conversation-heading">
 			<h2 id="conversation-heading" class="sr-only">Conversation</h2>
