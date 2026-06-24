@@ -6,12 +6,12 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import PackagePlusIcon from '@lucide/svelte/icons/package-plus';
 	import Share2Icon from '@lucide/svelte/icons/share-2';
-	import StoreIcon from '@lucide/svelte/icons/store';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Separator } from '$lib/components/ui/separator';
+	import JoeStoreMark from '$lib/components/joe-store-mark.svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import OpenAIIcon from './session/[id]/openai-icon.svelte';
 	import ToolActivity from './session/[id]/tool-activity.svelte';
@@ -94,9 +94,9 @@
 		<div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
 			<a class="flex items-center gap-2.5 font-semibold tracking-tight" href={resolve('/')}>
 				<span
-					class="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"
+					class="flex size-9 items-center justify-center rounded-xl border bg-background shadow-sm"
 				>
-					<StoreIcon class="size-5" aria-hidden="true" />
+					<JoeStoreMark aria-hidden="true" />
 				</span>
 				<span>Joe Store</span>
 			</a>
@@ -288,7 +288,7 @@
 			class="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 py-6 text-sm text-muted-foreground sm:flex-row sm:px-6"
 		>
 			<div class="flex items-center gap-2">
-				<StoreIcon class="size-4" aria-hidden="true" />
+				<JoeStoreMark class="size-4" aria-hidden="true" />
 				<span>Joe Store</span>
 			</div>
 			<div class="flex items-center gap-5">

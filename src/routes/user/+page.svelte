@@ -4,13 +4,13 @@
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import InboxIcon from '@lucide/svelte/icons/inbox';
-	import StoreIcon from '@lucide/svelte/icons/store';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as Empty from '$lib/components/ui/empty';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import JoeStoreMark from '$lib/components/joe-store-mark.svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import type { ErrorResponse, GetUserSessionsRes, SessionWithMeta } from '$lib/api';
 	import { providerLabel } from '$lib/provider';
@@ -119,9 +119,9 @@
 		<div class="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
 			<a class="flex items-center gap-2.5 font-semibold tracking-tight" href={resolve('/')}>
 				<span
-					class="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"
+					class="flex size-9 items-center justify-center rounded-xl border bg-background shadow-sm"
 				>
-					<StoreIcon class="size-5" aria-hidden="true" />
+					<JoeStoreMark aria-hidden="true" />
 				</span>
 				<span>Joe Store</span>
 			</a>

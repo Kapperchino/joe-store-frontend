@@ -3,11 +3,11 @@
 	import { resolve } from '$app/paths';
 	import type { Pathname } from '$app/types';
 	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
-	import StoreIcon from '@lucide/svelte/icons/store';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import JoeStoreMark from '$lib/components/joe-store-mark.svelte';
 	import {
 		captureCliLoginRequest,
 		getBrowserSupabaseClient,
@@ -100,9 +100,9 @@
 	<section class="flex w-full max-w-md flex-col items-center gap-6" aria-labelledby="login-title">
 		<a class="flex items-center gap-3 font-semibold tracking-tight" href={resolve('/')}>
 			<span
-				class="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm"
+				class="flex size-10 items-center justify-center rounded-2xl border bg-background shadow-sm"
 			>
-				<StoreIcon aria-hidden="true" />
+				<JoeStoreMark class="size-7" aria-hidden="true" />
 			</span>
 			<span>Joe Store</span>
 		</a>
