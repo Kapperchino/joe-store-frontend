@@ -98,7 +98,7 @@
 		{
 			icon: BlocksIcon,
 			title: 'Works with your agent',
-			body: 'Claude Code, Codex, Cursor, or anything else that supports skills.'
+			body: 'Claude Code, Codex, Cursor, and others that will come soon.'
 		},
 		{
 			icon: LinkIcon,
