@@ -117,7 +117,7 @@
 			>
 		{/if}
 		{#if preview}
-			<span class="truncate text-muted-foreground group-open:hidden">{preview}</span>
+			<span class="min-w-0 flex-1 truncate text-muted-foreground group-open:hidden">{preview}</span>
 		{/if}
 	</summary>
 

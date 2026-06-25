@@ -124,3 +124,10 @@
 		@apply font-sans;
 	}
 }
+
+/* Subtle dotted grid used behind hero / CTA surfaces. Pair with a mask-image
+   utility to fade it out at the edges. */
+@utility bg-dot-grid {
+	background-image: radial-gradient(var(--border) 1px, transparent 1px);
+	background-size: 20px 20px;
+}
