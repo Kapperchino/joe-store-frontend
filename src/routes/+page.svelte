@@ -21,6 +21,7 @@
 	import JoeStoreMark from '$lib/components/joe-store-mark.svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import ClaudeIcon from './session/[id]/claude-icon.svelte';
+	import CursorIcon from './session/[id]/cursor-icon.svelte';
 	import OpenAIIcon from './session/[id]/openai-icon.svelte';
 	import ToolActivity from './session/[id]/tool-activity.svelte';
 	import type { ToolActivity as ToolActivityData } from './session/[id]/session-view';
@@ -69,8 +70,8 @@
 
 	const agents: { name: string; icon: Component<{ class?: string }> | null }[] = [
 		{ name: 'Claude Code', icon: ClaudeIcon },
-		{ name: 'OpenAI Codex', icon: OpenAIIcon },
-		{ name: 'Cursor', icon: null }
+		{ name: 'Codex', icon: OpenAIIcon },
+		{ name: 'Cursor', icon: CursorIcon }
 	];
 
 	const features = [
@@ -377,7 +378,7 @@
 							{agent.name}
 						</div>
 					{/each}
-					<span class="text-sm text-muted-foreground">+ any agent that supports skills</span>
+					<span class="text-sm text-muted-foreground">+ others coming soon</span>
 				</div>
 			</div>
 		</section>
