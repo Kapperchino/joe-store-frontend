@@ -15,6 +15,8 @@ export interface OpenAISessionMeta {
   id: string;
   model_provider: string;
   originator: string;
+  /** @nullable */
+  session_id?: string | null;
   source: string;
   thread_source: string;
   timestamp: string;

@@ -1,6 +1,6 @@
 import { defineConfig } from 'orval';
 
-const apiBaseUrl = 'http://joe-store:3000';
+const apiBaseUrl = 'https://joe-store.onrender.com';
 
 export default defineConfig({
 	joeStore: {
@@ -12,7 +12,7 @@ export default defineConfig({
 			schemas: './src/lib/api/generated/models',
 			client: 'fetch',
 			mode: 'split',
-			baseUrl: apiBaseUrl,
+			baseUrl: 'http://joe-store:3000',
 			clean: true
 		}
 	}

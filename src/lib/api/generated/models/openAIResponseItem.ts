@@ -9,9 +9,13 @@ import type { OpenAIResponseItemMetadata } from './openAIResponseItemMetadata.ts
 import type { OpenAIResponseRole } from './openAIResponseRole.ts';
 import type { OpenAIToolOutput } from './openAIToolOutput.ts';
 import type { SummaryTextContent } from './summaryTextContent.ts';
+import type { WebSearchAction } from './webSearchAction.ts';
 
 export type OpenAIResponseItem = {
   content: OpenAIResponseContentPart[];
+  /** @nullable */
+  id?: string | null;
+  internal_chat_message_metadata_passthrough?: null | OpenAIResponseItemMetadata;
   metadata?: null | OpenAIResponseItemMetadata;
   /** @nullable */
   phase?: string | null;
@@ -19,30 +23,54 @@ export type OpenAIResponseItem = {
   type: 'message';
 } | {
   encrypted_content: string;
+  /** @nullable */
+  id?: string | null;
+  internal_chat_message_metadata_passthrough?: null | OpenAIResponseItemMetadata;
   metadata?: null | OpenAIResponseItemMetadata;
   summary: SummaryTextContent[];
   type: 'reasoning';
 } | {
   arguments: string;
   call_id: string;
+  /** @nullable */
+  id?: string | null;
+  internal_chat_message_metadata_passthrough?: null | OpenAIResponseItemMetadata;
   metadata?: null | OpenAIResponseItemMetadata;
   name: string;
   type: 'function_call';
 } | {
   call_id: string;
+  /** @nullable */
+  id?: string | null;
+  internal_chat_message_metadata_passthrough?: null | OpenAIResponseItemMetadata;
   metadata?: null | OpenAIResponseItemMetadata;
   output: OpenAIToolOutput;
   type: 'function_call_output';
 } | {
   call_id: string;
+  /** @nullable */
+  id?: string | null;
   input: string;
+  internal_chat_message_metadata_passthrough?: null | OpenAIResponseItemMetadata;
   metadata?: null | OpenAIResponseItemMetadata;
   name: string;
   status: string;
   type: 'custom_tool_call';
 } | {
   call_id: string;
+  /** @nullable */
+  id?: string | null;
+  internal_chat_message_metadata_passthrough?: null | OpenAIResponseItemMetadata;
   metadata?: null | OpenAIResponseItemMetadata;
   output: OpenAIToolOutput;
   type: 'custom_tool_call_output';
+} | {
+  action?: null | WebSearchAction;
+  /** @nullable */
+  id?: string | null;
+  internal_chat_message_metadata_passthrough?: null | OpenAIResponseItemMetadata;
+  metadata?: null | OpenAIResponseItemMetadata;
+  /** @nullable */
+  status?: string | null;
+  type: 'web_search_call';
 };

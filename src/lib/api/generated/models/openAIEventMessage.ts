@@ -51,6 +51,10 @@ export type OpenAIEventMessage = {
   turn_id: string;
   type: 'turn_aborted';
 } | {
+  /** @minimum 0 */
+  num_turns: number;
+  type: 'thread_rolled_back';
+} | {
   call_id: string;
   changes: {[key: string]: OpenAIPatchChange};
   status: string;

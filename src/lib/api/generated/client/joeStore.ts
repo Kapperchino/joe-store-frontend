@@ -44,7 +44,7 @@ export const getPutSessionUrl = () => {
 
 
 
-  return `https://joe-store.onrender.com/session`
+  return `http://joe-store:3000/session`
 }
 
 export const putSession = async (putSessionReq: PutSessionReq, options?: RequestInit): Promise<putSessionResponse> => {
@@ -91,7 +91,7 @@ export const getGetSessionUrl = (sessionId: number,) => {
 
 
 
-  return `https://joe-store.onrender.com/session/${sessionId}`
+  return `http://joe-store:3000/session/${sessionId}`
 }
 
 export const getSession = async (sessionId: number, options?: RequestInit): Promise<getSessionResponse> => {
@@ -153,7 +153,7 @@ export const getGrantSessionAuthorizationUrl = (sessionId: number,) => {
 
 
 
-  return `https://joe-store.onrender.com/session/${sessionId}/authorization`
+  return `http://joe-store:3000/session/${sessionId}/authorization`
 }
 
 export const grantSessionAuthorization = async (sessionId: number,
@@ -201,7 +201,7 @@ export const getGetUserSessionsUrl = (userId: string,) => {
 
 
 
-  return `https://joe-store.onrender.com/user/${userId}`
+  return `http://joe-store:3000/user/${userId}`
 }
 
 export const getUserSessions = async (userId: string, options?: RequestInit): Promise<getUserSessionsResponse> => {
