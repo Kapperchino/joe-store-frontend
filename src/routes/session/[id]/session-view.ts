@@ -293,6 +293,41 @@ function isFailureOutput(text: string): boolean {
 	);
 }
 
+type OpenAIEvent = Extract<OpenAISessionEntry, { type: 'event_msg' }>['payload'];
+type OpenAIPatchApplyEnd = Extract<OpenAIEvent, { type: 'patch_apply_end' }>;
+
+interface OpenAIPatchApplyState {
+	isError: boolean;
+	output?: string;
+}
+
+function appendToolOutput(activity: ToolActivity, output: string | undefined): void {
+	if (!output) return;
+	activity.output = activity.output ? `${activity.output}\n\n${output}` : output;
+}
+
+function openAIPatchApplyOutput(event: OpenAIPatchApplyEnd): string | undefined {
+	const stdout = event.stdout.trim();
+	const stderr = event.stderr.trim();
+	const sections: string[] = [];
+
+	if (!event.success || stdout || stderr) {
+		sections.push(`Status: ${event.status || (event.success ? 'success' : 'failed')}`);
+	}
+	if (stdout) sections.push(`Stdout:\n${stdout}`);
+	if (stderr) sections.push(`Stderr:\n${stderr}`);
+
+	return sections.length > 0 ? sections.join('\n\n') : undefined;
+}
+
+function applyOpenAIPatchApplyState(
+	activity: ToolActivity,
+	state: OpenAIPatchApplyState
+): void {
+	appendToolOutput(activity, state.output);
+	activity.isError = Boolean(activity.isError) || state.isError;
+}
+
 // AskUserQuestion input carries the questions and their selectable options.
 function buildQuestions(input: unknown): QuestionView[] | undefined {
 	if (!input || typeof input !== 'object') return undefined;
@@ -680,6 +715,7 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 	// Tool calls and outputs arrive as separate items; track each call by id so
 	// the output can be merged back into the assistant reply that issued it.
 	const toolsById = new Map<string, ToolActivity>();
+	const patchApplyByCallId = new Map<string, OpenAIPatchApplyState>();
 	let lastAssistant: SessionMessageView | undefined;
 
 	data.forEach((entry, index) => {
@@ -713,7 +749,14 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 					label: item.name,
 					input: formatDetail(item.type === 'function_call' ? item.arguments : item.input)
 				};
-				if (item.call_id) toolsById.set(item.call_id, activity);
+				if (item.call_id) {
+					toolsById.set(item.call_id, activity);
+					const patchApplyState = patchApplyByCallId.get(item.call_id);
+					if (patchApplyState) {
+						applyOpenAIPatchApplyState(activity, patchApplyState);
+						patchApplyByCallId.delete(item.call_id);
+					}
+				}
 
 				// Attach the call to the assistant turn that issued it; if the model
 				// went straight to a tool with no text, synthesize an assistant reply.
@@ -736,8 +779,8 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 				const output = formatDetail(text);
 				const isError = isFailureOutput(text);
 				if (existing) {
-					existing.output = output;
-					existing.isError = isError;
+					appendToolOutput(existing, output);
+					existing.isError = Boolean(existing.isError) || isError;
 				} else if (lastAssistant) {
 					lastAssistant.parts.push({ kind: 'tool', tool: { label: 'Tool result', output, isError } });
 				} else {
@@ -752,9 +795,22 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 			}
 		}
 
-		if (!hasConversationItems && entry.type === 'event_msg') {
+		if (entry.type === 'event_msg') {
 			const event = entry.payload;
-			if (event.type === 'user_message' || event.type === 'agent_message') {
+			if (event.type === 'patch_apply_end') {
+				const state: OpenAIPatchApplyState = {
+					isError: !event.success,
+					output: formatDetail(openAIPatchApplyOutput(event))
+				};
+				const existing = toolsById.get(event.call_id);
+				if (existing) {
+					applyOpenAIPatchApplyState(existing, state);
+				} else {
+					patchApplyByCallId.set(event.call_id, state);
+				}
+			}
+
+			if (!hasConversationItems && (event.type === 'user_message' || event.type === 'agent_message')) {
 				const text =
 					event.type === 'user_message'
 						? stripOpenAIEnvironmentContext(event.message)
