@@ -37,6 +37,8 @@ export type OpenAIResponseItem = {
   internal_chat_message_metadata_passthrough?: null | OpenAIResponseItemMetadata;
   metadata?: null | OpenAIResponseItemMetadata;
   name: string;
+  /** @nullable */
+  namespace?: string | null;
   type: 'function_call';
 } | {
   call_id: string;

@@ -4,6 +4,8 @@
  * joe-store
  * OpenAPI spec version: 0.1.0
  */
+import type { OpenAIDuration } from './openAIDuration.ts';
+import type { OpenAIMcpToolInvocation } from './openAIMcpToolInvocation.ts';
 import type { OpenAIPatchChange } from './openAIPatchChange.ts';
 import type { OpenAIRateLimits } from './openAIRateLimits.ts';
 import type { OpenAITokenCountInfo } from './openAITokenCountInfo.ts';
@@ -21,8 +23,8 @@ export type OpenAIEventMessage = {
   text_elements: unknown[];
   type: 'user_message';
 } | {
-  info: OpenAITokenCountInfo;
-  rate_limits: OpenAIRateLimits;
+  info?: null | OpenAITokenCountInfo;
+  rate_limits?: null | OpenAIRateLimits;
   type: 'token_count';
 } | {
   collaboration_mode_kind: string;
@@ -55,6 +57,8 @@ export type OpenAIEventMessage = {
   num_turns: number;
   type: 'thread_rolled_back';
 } | {
+  type: 'context_compacted';
+} | {
   call_id: string;
   changes: {[key: string]: OpenAIPatchChange};
   status: string;
@@ -68,4 +72,10 @@ export type OpenAIEventMessage = {
   call_id: string;
   query: string;
   type: 'web_search_end';
+} | {
+  call_id: string;
+  duration: OpenAIDuration;
+  invocation: OpenAIMcpToolInvocation;
+  result: unknown;
+  type: 'mcp_tool_call_end';
 };

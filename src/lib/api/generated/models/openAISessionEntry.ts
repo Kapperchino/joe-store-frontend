@@ -25,4 +25,8 @@ export type OpenAISessionEntry = {
   payload: OpenAIResponseItem;
   timestamp: string;
   type: 'response_item';
+} | {
+  payload: unknown;
+  timestamp: string;
+  type: 'compacted';
 };
