@@ -282,6 +282,10 @@ function openAIOutputText(output: unknown): string {
 function isFailureOutput(text: string): boolean {
 	const normalized = text.toLowerCase();
 	if (!normalized.trim()) return false;
+
+	const status = normalized.match(/(?:^|\n)\s*status:\s*([^\n]+)/)?.[1].trim();
+	if (status) return !['completed', 'success', 'succeeded', 'done'].includes(status);
+
 	return (
 		/(^|\n)\s*(error|fatal|traceback)\b/.test(normalized) ||
 		normalized.includes('failed to apply') ||
