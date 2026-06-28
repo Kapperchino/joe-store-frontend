@@ -12,7 +12,10 @@ export default defineConfig({
 			schemas: './src/lib/api/generated/models',
 			client: 'fetch',
 			mode: 'split',
-			baseUrl: 'http://joe-store:3000',
+			baseUrl: {
+				runtime: 'backendBaseUrl',
+				imports: [{ name: 'backendBaseUrl', importPath: '$lib/api/backend' }]
+			},
 			clean: true
 		}
 	}

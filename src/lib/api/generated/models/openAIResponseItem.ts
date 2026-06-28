@@ -67,6 +67,24 @@ export type OpenAIResponseItem = {
   output: OpenAIToolOutput;
   type: 'custom_tool_call_output';
 } | {
+  arguments: unknown;
+  call_id: string;
+  execution: string;
+  /** @nullable */
+  id?: string | null;
+  internal_chat_message_metadata_passthrough?: null | OpenAIResponseItemMetadata;
+  metadata?: null | OpenAIResponseItemMetadata;
+  status: string;
+  type: 'tool_search_call';
+} | {
+  call_id: string;
+  execution: string;
+  internal_chat_message_metadata_passthrough?: null | OpenAIResponseItemMetadata;
+  metadata?: null | OpenAIResponseItemMetadata;
+  status: string;
+  tools: unknown[];
+  type: 'tool_search_output';
+} | {
   action?: null | WebSearchAction;
   /** @nullable */
   id?: string | null;

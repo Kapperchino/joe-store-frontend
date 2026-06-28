@@ -3,16 +3,19 @@
 	import { resolve } from '$app/paths';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
+	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import InboxIcon from '@lucide/svelte/icons/inbox';
+	import LockIcon from '@lucide/svelte/icons/lock';
+	import UsersIcon from '@lucide/svelte/icons/users';
 	import * as Alert from '$lib/components/ui/alert';
-	import { Badge } from '$lib/components/ui/badge';
+	import { Badge, type BadgeVariant } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import * as Empty from '$lib/components/ui/empty';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import JoeStoreMark from '$lib/components/joe-store-mark.svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
-	import type { ErrorResponse, GetUserSessionsRes, SessionWithMeta } from '$lib/api';
+	import type { AuthType, ErrorResponse, GetUserSessionsRes, SessionWithMeta } from '$lib/api';
 	import { providerLabel } from '$lib/provider';
 	import {
 		getBrowserSupabaseClient,
@@ -47,6 +50,23 @@
 	function createdAtTimestamp(value: string): number {
 		const timestamp = Date.parse(value);
 		return Number.isNaN(timestamp) ? 0 : timestamp;
+	}
+
+	function usersFromAuthType(value: AuthType): string[] {
+		return typeof value === 'object' && value !== null && 'users' in value ? value.users : [];
+	}
+
+	function authTypeLabel(value: AuthType): string {
+		if (value === 'public') return 'Public';
+		if (value === 'private') return 'Private';
+		const userCount = usersFromAuthType(value).length;
+		return userCount === 1 ? 'Shared with 1 user' : `Shared with ${userCount} users`;
+	}
+
+	function authTypeBadgeVariant(value: AuthType): BadgeVariant {
+		if (value === 'public') return 'default';
+		if (value === 'private') return 'outline';
+		return 'secondary';
 	}
 
 	async function loadSessions() {
@@ -196,7 +216,19 @@
 								<Card.Description>Session #{session.id}</Card.Description>
 							</Card.Header>
 							<Card.Content class="flex items-center justify-between gap-3">
-								<Badge variant="secondary">{providerLabel(session.provider_type)}</Badge>
+								<div class="flex flex-wrap items-center gap-2">
+									<Badge variant="secondary">{providerLabel(session.provider_type)}</Badge>
+									<Badge variant={authTypeBadgeVariant(session.auth_type)}>
+										{#if session.auth_type === 'public'}
+											<GlobeIcon data-icon="inline-start" aria-hidden="true" />
+										{:else if session.auth_type === 'private'}
+											<LockIcon data-icon="inline-start" aria-hidden="true" />
+										{:else}
+											<UsersIcon data-icon="inline-start" aria-hidden="true" />
+										{/if}
+										{authTypeLabel(session.auth_type)}
+									</Badge>
+								</div>
 								<time class="text-xs text-muted-foreground" datetime={session.created_time}>
 									{formatCreatedTime(session.created_time)}
 								</time>

@@ -4,6 +4,7 @@
  * joe-store
  * OpenAPI spec version: 0.1.0
  */
+import { backendBaseUrl } from '$lib/api/backend';
 import type {
   ErrorResponse,
   GetSessionRes,
@@ -44,7 +45,7 @@ export const getPutSessionUrl = () => {
 
 
 
-  return `http://joe-store:3000/session`
+  return `${backendBaseUrl}/session`
 }
 
 export const putSession = async (putSessionReq: PutSessionReq, options?: RequestInit): Promise<putSessionResponse> => {
@@ -91,7 +92,7 @@ export const getGetSessionUrl = (sessionId: number,) => {
 
 
 
-  return `http://joe-store:3000/session/${sessionId}`
+  return `${backendBaseUrl}/session/${sessionId}`
 }
 
 export const getSession = async (sessionId: number, options?: RequestInit): Promise<getSessionResponse> => {
@@ -153,7 +154,7 @@ export const getGrantSessionAuthorizationUrl = (sessionId: number,) => {
 
 
 
-  return `http://joe-store:3000/session/${sessionId}/authorization`
+  return `${backendBaseUrl}/session/${sessionId}/authorization`
 }
 
 export const grantSessionAuthorization = async (sessionId: number,
@@ -201,7 +202,7 @@ export const getGetUserSessionsUrl = (userId: string,) => {
 
 
 
-  return `http://joe-store:3000/user/${userId}`
+  return `${backendBaseUrl}/user/${userId}`
 }
 
 export const getUserSessions = async (userId: string, options?: RequestInit): Promise<getUserSessionsResponse> => {
@@ -221,6 +222,4 @@ export const getUserSessions = async (userId: string, options?: RequestInit): Pr
   const data: getUserSessionsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getUserSessionsResponse
 }
-
-
 

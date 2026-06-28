@@ -4,9 +4,11 @@
  * joe-store
  * OpenAPI spec version: 0.1.0
  */
+import type { AuthType } from './authType.ts';
 import type { ProviderType } from './providerType.ts';
 
 export interface SessionWithMeta {
+  auth_type: AuthType;
   created_time: string;
   id: number;
   provider_type: ProviderType;

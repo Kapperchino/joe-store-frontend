@@ -8,4 +8,5 @@ import type { Session } from './session.ts';
 
 export interface PutSessionReq {
   session: Session;
+  session_id: string;
 }
