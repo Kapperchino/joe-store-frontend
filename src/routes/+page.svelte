@@ -74,6 +74,10 @@
 		{ name: 'Cursor', icon: CursorIcon }
 	];
 
+	const compatibilityItems: { name: string; icon: Component<{ class?: string }> | null }[] = [
+		...agents
+	];
+
 	const features = [
 		{
 			icon: MessageSquareIcon,
@@ -160,10 +164,10 @@
 	</span>
 {/snippet}
 
-<div class="flex min-h-svh flex-col bg-background">
+<div class="landing-shell flex min-h-svh flex-col bg-background">
 	<header class="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
 		<div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-			<a class="flex items-center gap-2.5 font-semibold tracking-tight" href={resolve('/')}>
+			<a class="flex items-center gap-2.5 font-semibold" href={resolve('/')}>
 				<span
 					class="flex size-9 items-center justify-center rounded-xl border bg-background shadow-sm"
 				>
@@ -193,7 +197,11 @@
 
 	<main class="flex-1">
 		<!-- Hero -->
-		<section class="relative isolate overflow-hidden">
+		<section class="hero-section relative isolate overflow-hidden">
+			<div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+				<div class="hero-aurora absolute inset-x-0 top-0 h-[42rem]"></div>
+				<div class="hero-beams absolute inset-0"></div>
+			</div>
 			<div
 				class="pointer-events-none absolute inset-0 -z-10 bg-dot-grid [mask-image:radial-gradient(ellipse_80%_55%_at_50%_0%,#000_50%,transparent_100%)]"
 			></div>
@@ -217,7 +225,7 @@
 						/>
 					</a>
 
-					<h1 class="mt-5 max-w-2xl text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
+					<h1 class="mt-5 max-w-2xl text-4xl font-semibold text-balance sm:text-6xl">
 						Your AI coding sessions, ready to share.
 					</h1>
 					<p
@@ -228,7 +236,12 @@
 					</p>
 
 					<div class="mt-8 flex flex-col gap-3 sm:flex-row">
-						<Button href={skillUrl} target="_blank" rel="noreferrer" size="lg">
+						<Button
+							href={skillUrl}
+							target="_blank"
+							rel="noreferrer"
+							size="lg"
+						>
 							Install the skill
 							<ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
 						</Button>
@@ -238,7 +251,7 @@
 					<div class="mt-8 w-full max-w-xl">
 						<p class="mb-2 text-xs font-medium text-muted-foreground">Or install from your terminal</p>
 						<div
-							class="flex items-center gap-3 rounded-xl border bg-muted/40 px-3 py-2.5 text-left font-mono text-sm"
+							class="command-panel flex items-center gap-3 overflow-hidden rounded-xl border bg-muted/40 px-3 py-2.5 text-left font-mono text-sm"
 						>
 							<TerminalIcon class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 							<code class="min-w-0 flex-1 truncate text-foreground">{installCmd}</code>
@@ -261,7 +274,7 @@
 
 				<!-- Product preview: the shared link itself -->
 				<div
-					class="relative min-w-0 overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-xl ring-1 ring-foreground/5"
+					class="preview-card relative min-w-0 overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-xl ring-1 ring-foreground/5"
 				>
 					<div class="flex items-center gap-3 border-b bg-muted/40 px-4 py-2.5">
 						<div class="flex items-center gap-1.5" aria-hidden="true">
@@ -284,7 +297,7 @@
 					</div>
 
 					<div class="flex flex-col gap-1 px-5 pt-4">
-						<h2 class="text-sm font-semibold tracking-tight">Account activity CSV export</h2>
+						<h2 class="text-sm font-semibold">Account activity CSV export</h2>
 						<p class="flex items-center gap-1.5 text-xs text-muted-foreground">
 							<OpenAIIcon class="size-3.5" />
 							Example transcript · OpenAI
@@ -300,7 +313,7 @@
 									>
 										<UserIcon class="size-4" aria-hidden="true" />
 									</span>
-									<h3 class="text-sm font-semibold tracking-tight">User</h3>
+									<h3 class="text-sm font-semibold">User</h3>
 								</div>
 								<time class="text-xs text-muted-foreground" datetime="2026-06-21T10:42:00">
 									10:42 AM
@@ -322,7 +335,7 @@
 									>
 										<OpenAIIcon class="size-4" />
 									</span>
-									<h3 class="text-sm font-semibold tracking-tight">Assistant</h3>
+									<h3 class="text-sm font-semibold">Assistant</h3>
 								</div>
 								<time class="text-xs text-muted-foreground" datetime="2026-06-21T10:44:00">
 									10:44 AM
@@ -365,20 +378,21 @@
 			<div
 				class="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-4 py-10 sm:px-6"
 			>
-				<p class="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+				<p class="text-xs font-medium text-muted-foreground uppercase">
 					Works with the agents you already use
 				</p>
-				<div class="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-					{#each agents as agent (agent.name)}
+				<div class="flex flex-wrap items-center justify-center gap-3">
+					{#each compatibilityItems as agent (agent.name)}
 						{@const Icon = agent.icon}
-						<div class="flex items-center gap-2 text-sm font-medium text-foreground/80">
+						<div
+							class="agent-pill flex items-center gap-2 rounded-full border bg-background/70 px-4 py-2 text-sm font-medium text-foreground/80 shadow-sm backdrop-blur"
+						>
 							{#if Icon}
 								<Icon class="size-5" />
 							{/if}
 							{agent.name}
 						</div>
 					{/each}
-					<span class="text-sm text-muted-foreground">+ others coming soon</span>
 				</div>
 			</div>
 		</section>
@@ -388,7 +402,7 @@
 			<div class="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
 				<div class="mx-auto flex max-w-2xl flex-col items-center text-center">
 					{@render eyebrow('What you share')}
-					<h2 class="mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+					<h2 class="mt-4 text-3xl font-semibold text-balance sm:text-4xl">
 						Everything that happened, in one place.
 					</h2>
 					<p class="mt-4 text-base leading-relaxed text-pretty text-muted-foreground">
@@ -401,13 +415,15 @@
 				>
 					{#each features as feature (feature.title)}
 						{@const Icon = feature.icon}
-						<div class="flex flex-col gap-3 bg-card p-6">
+						<div
+							class="effect-card flex flex-col gap-3 bg-card p-6"
+						>
 							<span
-								class="flex size-10 items-center justify-center rounded-lg border bg-background"
+								class="icon-shell flex size-10 items-center justify-center rounded-lg border bg-background"
 							>
 								<Icon class="size-5" aria-hidden="true" />
 							</span>
-							<h3 class="text-base font-semibold tracking-tight">{feature.title}</h3>
+							<h3 class="text-base font-semibold">{feature.title}</h3>
 							<p class="text-sm leading-relaxed text-muted-foreground">{feature.body}</p>
 						</div>
 					{/each}
@@ -420,7 +436,7 @@
 			<div class="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
 				<div class="mx-auto flex max-w-2xl flex-col items-center text-center">
 					{@render eyebrow('How it works')}
-					<h2 class="mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+					<h2 class="mt-4 text-3xl font-semibold text-balance sm:text-4xl">
 						From active session to shareable link in three steps.
 					</h2>
 					<p class="mt-4 text-base leading-relaxed text-pretty text-muted-foreground">
@@ -431,17 +447,19 @@
 				<div class="mt-12 grid gap-4 lg:grid-cols-3">
 					{#each steps as step, i (step.title)}
 						{@const Icon = step.icon}
-						<div class="flex flex-col gap-4 rounded-2xl border bg-card p-6 shadow-sm">
+						<div
+							class="effect-card flex flex-col gap-4 rounded-2xl border bg-card p-6 shadow-sm"
+						>
 							<div class="flex items-center justify-between">
 								<span
-									class="flex size-10 items-center justify-center rounded-lg border bg-background"
+									class="icon-shell flex size-10 items-center justify-center rounded-lg border bg-background"
 								>
 									<Icon class="size-5" aria-hidden="true" />
 								</span>
 								<span class="font-mono text-xs text-muted-foreground">0{i + 1}</span>
 							</div>
 							<div class="flex flex-col gap-1.5">
-								<h3 class="text-base font-semibold tracking-tight">{step.title}</h3>
+								<h3 class="text-base font-semibold">{step.title}</h3>
 								<p class="text-sm leading-relaxed text-muted-foreground">{step.body}</p>
 							</div>
 							<code
@@ -459,14 +477,14 @@
 		<section id="security" class="scroll-mt-20">
 			<div class="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
 				<div
-					class="grid gap-8 rounded-2xl border bg-card p-8 shadow-sm sm:p-10 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-12"
+					class="security-panel relative grid gap-8 overflow-hidden rounded-2xl border bg-card p-8 shadow-sm sm:p-10 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-12"
 				>
 					<div class="flex flex-col items-start gap-4">
-						<span class="flex size-11 items-center justify-center rounded-xl border bg-background">
+						<span class="icon-shell flex size-11 items-center justify-center rounded-xl border bg-background">
 							<ShieldCheckIcon class="size-5" aria-hidden="true" />
 						</span>
 						{@render eyebrow('Security')}
-						<h2 class="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
+						<h2 class="text-2xl font-semibold text-balance sm:text-3xl">
 							Your sessions stay yours.
 						</h2>
 						<p class="text-sm leading-relaxed text-muted-foreground">
@@ -493,12 +511,12 @@
 		<!-- Final CTA -->
 		<section class="mx-auto w-full max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28">
 			<div
-				class="relative isolate overflow-hidden rounded-3xl border bg-card px-6 py-14 text-center shadow-sm sm:px-12 sm:py-20"
+				class="cta-panel relative isolate overflow-hidden rounded-3xl border bg-card px-6 py-14 text-center shadow-sm sm:px-12 sm:py-20"
 			>
 				<div
 					class="pointer-events-none absolute inset-0 -z-10 bg-dot-grid [mask-image:radial-gradient(ellipse_70%_80%_at_50%_50%,#000_35%,transparent_75%)]"
 				></div>
-				<h2 class="mx-auto max-w-xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+				<h2 class="mx-auto max-w-xl text-3xl font-semibold text-balance sm:text-4xl">
 					Make your next session easy to review.
 				</h2>
 				<p
@@ -552,3 +570,179 @@
 		</div>
 	</footer>
 </div>
+
+<style>
+	:global(html) {
+		scroll-behavior: smooth;
+	}
+
+	.landing-shell {
+		background:
+			linear-gradient(
+				180deg,
+				color-mix(in oklch, var(--background), var(--chart-2) 6%) 0%,
+				var(--background) 28rem
+			),
+			var(--background);
+	}
+
+	.hero-aurora {
+		background:
+			linear-gradient(
+				115deg,
+				transparent 4%,
+				color-mix(in oklch, var(--chart-2), transparent 66%) 22%,
+				color-mix(in oklch, var(--chart-4), transparent 72%) 46%,
+				color-mix(in oklch, var(--chart-1), transparent 76%) 68%,
+				transparent 92%
+			),
+			repeating-linear-gradient(
+				100deg,
+				color-mix(in oklch, var(--foreground), transparent 95%) 0 1px,
+				transparent 1px 96px
+			);
+		filter: blur(34px);
+		opacity: 0.28;
+		transform: translateY(-18%);
+	}
+
+	.hero-beams {
+		background:
+			linear-gradient(
+				90deg,
+				color-mix(in oklch, var(--foreground), transparent 94%) 1px,
+				transparent 1px
+			),
+			linear-gradient(
+				180deg,
+				color-mix(in oklch, var(--foreground), transparent 95%) 1px,
+				transparent 1px
+			);
+		background-size: 88px 88px;
+		mask-image: radial-gradient(ellipse 72% 48% at 50% 16%, #000 0%, transparent 72%);
+		opacity: 0.38;
+	}
+
+	.command-panel {
+		position: relative;
+		isolation: isolate;
+	}
+
+	.command-panel::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: linear-gradient(
+			90deg,
+			color-mix(in oklch, var(--chart-2), transparent 88%),
+			transparent 32%,
+			color-mix(in oklch, var(--chart-4), transparent 90%)
+		);
+		opacity: 0.32;
+		pointer-events: none;
+	}
+
+	.metric-cell {
+		background: linear-gradient(
+			180deg,
+			color-mix(in oklch, var(--background), var(--foreground) 1%),
+			color-mix(in oklch, var(--background), var(--chart-2) 3%)
+		);
+		transition:
+			background-color 180ms ease,
+			transform 180ms ease;
+	}
+
+	.metric-cell:hover {
+		transform: translateY(-2px);
+		background: color-mix(in oklch, var(--background), var(--chart-2) 8%);
+	}
+
+	.preview-card {
+		transition:
+			transform 260ms ease,
+			box-shadow 260ms ease,
+			border-color 260ms ease;
+	}
+
+	.preview-card:hover {
+		border-color: color-mix(in oklch, var(--chart-2), var(--border) 60%);
+		box-shadow:
+			0 18px 54px color-mix(in oklch, var(--chart-2), transparent 92%),
+			0 8px 22px color-mix(in oklch, var(--foreground), transparent 94%);
+		transform: translateY(-2px);
+	}
+
+	.agent-pill {
+		transition:
+			transform 180ms ease,
+			border-color 180ms ease,
+			background-color 180ms ease;
+	}
+
+	.agent-pill:hover {
+		border-color: color-mix(in oklch, var(--chart-2), var(--border) 64%);
+		background: color-mix(in oklch, var(--background), var(--chart-2) 5%);
+	}
+
+	.effect-card {
+		position: relative;
+		overflow: hidden;
+		transition:
+			border-color 220ms ease,
+			background-color 220ms ease,
+			box-shadow 220ms ease;
+	}
+
+	.effect-card:hover {
+		border-color: color-mix(in oklch, var(--chart-2), var(--border) 58%);
+		background-color: color-mix(in oklch, var(--card), var(--chart-2) 2%);
+		box-shadow: 0 16px 48px color-mix(in oklch, var(--foreground), transparent 94%);
+	}
+
+	.icon-shell {
+		box-shadow: inset 0 1px 0 color-mix(in oklch, var(--foreground), transparent 90%);
+		transition:
+			transform 220ms ease,
+			background-color 220ms ease;
+	}
+
+	.effect-card:hover .icon-shell,
+	.security-panel:hover .icon-shell {
+		background-color: color-mix(in oklch, var(--background), var(--chart-2) 7%);
+	}
+
+	.security-panel::after,
+	.cta-panel::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		pointer-events: none;
+		background:
+			linear-gradient(
+				135deg,
+				color-mix(in oklch, var(--chart-2), transparent 92%),
+				transparent 38%,
+				color-mix(in oklch, var(--chart-4), transparent 92%)
+			),
+			repeating-linear-gradient(
+				90deg,
+				color-mix(in oklch, var(--foreground), transparent 97%) 0 1px,
+				transparent 1px 60px
+			);
+	}
+
+	.security-panel > :global(*),
+	.cta-panel > :global(*) {
+		position: relative;
+		z-index: 1;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(html) {
+			scroll-behavior: auto;
+		}
+	}
+</style>
