@@ -1,6 +1,6 @@
 import { defineConfig } from 'orval';
 
-const apiBaseUrl = 'https://joe-store.onrender.com';
+const apiBaseUrl = 'https://joe-store.fly.dev';
 
 export default defineConfig({
 	joeStore: {

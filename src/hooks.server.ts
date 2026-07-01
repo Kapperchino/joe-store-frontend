@@ -1,15 +1,17 @@
-import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '$env/static/private';
+import { getSupabaseConfig } from '$lib/server/supabase-config';
 import { createServerClient } from '@supabase/ssr';
 import type { Handle } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-		throw new Error('SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY must be configured.');
+	if (event.url.pathname === '/healthz') {
+		return resolve(event);
 	}
+
+	const { supabaseUrl, supabasePublishableKey } = getSupabaseConfig();
 
 	const authHeaders = new Headers();
 
-	event.locals.supabase = createServerClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+	event.locals.supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
 		cookies: {
 			getAll: () => event.cookies.getAll(),
 			setAll: (cookiesToSet, headers) => {

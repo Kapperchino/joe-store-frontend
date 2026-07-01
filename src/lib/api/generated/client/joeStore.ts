@@ -4,7 +4,10 @@
  * joe-store
  * OpenAPI spec version: 0.1.0
  */
-import { backendBaseUrl } from '$lib/api/backend';
+import {
+  backendBaseUrl
+} from '$lib/api/backend';
+
 import type {
   ErrorResponse,
   GetSessionRes,
@@ -222,4 +225,6 @@ export const getUserSessions = async (userId: string, options?: RequestInit): Pr
   const data: getUserSessionsResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getUserSessionsResponse
 }
+
+
 
