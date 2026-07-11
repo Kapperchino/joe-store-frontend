@@ -17,22 +17,29 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import JoeStoreMark from '$lib/components/joe-store-mark.svelte';
+	import Markdown from '$lib/components/markdown.svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import type {
 		AuthType,
-		CloudflareSearchChunk,
-		CloudflareSearchResult,
 		ErrorResponse,
 		GetUserSessionsRes,
 		SessionWithMeta
 	} from '$lib/api';
 	import { providerLabel } from '$lib/provider';
 	import {
+		searchChunkEntryIndex,
+		searchChunkSessionId,
+		type RenderedSearchChunk,
+		type RenderedSearchResult
+	} from '$lib/search';
+	import {
 		getBrowserSupabaseClient,
 		storeAuthTokens,
 		withStoredAccessToken
 	} from '$lib/auth';
 	import { onMount } from 'svelte';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
+	import SessionMessageRow from '../session/[id]/session-message-row.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -42,7 +49,7 @@
 	let loading = $state(true);
 	let searchQuery = $state('');
 	let searchedQuery = $state('');
-	let searchChunks = $state<CloudflareSearchChunk[]>([]);
+	let searchChunks = $state<RenderedSearchChunk[]>([]);
 	let searchError = $state<string | null>(null);
 	let searchNotice = $state<string | null>(null);
 	let searching = $state(false);
@@ -53,6 +60,10 @@
 		dateStyle: 'medium',
 		timeStyle: 'short',
 		timeZone: 'UTC'
+	});
+	const messageDateFormatter = new Intl.DateTimeFormat(undefined, {
+		dateStyle: 'medium',
+		timeStyle: 'short'
 	});
 
 	function sessionTitle(topic: string | null | undefined, id: number): string {
@@ -67,6 +78,12 @@
 	function createdAtTimestamp(value: string): number {
 		const timestamp = Date.parse(value);
 		return Number.isNaN(timestamp) ? 0 : timestamp;
+	}
+
+	function formatMessageTime(value: string | undefined): string | undefined {
+		if (!value) return undefined;
+		const date = new Date(value);
+		return Number.isNaN(date.valueOf()) ? value : messageDateFormatter.format(date);
 	}
 
 	function usersFromAuthType(value: AuthType): string[] {
@@ -86,23 +103,15 @@
 		return 'secondary';
 	}
 
-	function integerSessionId(value: unknown): number | null {
-		if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) return value;
-		if (typeof value !== 'string' || !/^\d+$/.test(value)) return null;
+	function searchChunkHrefSuffix(chunk: RenderedSearchChunk): string {
+		const params = new SvelteURLSearchParams({ search: searchedQuery });
+		const entryIndex = searchChunkEntryIndex(chunk, searchedQuery);
+		if (entryIndex !== null) params.set('entry', String(entryIndex));
+		// Keep a text fallback as well: some providers index duplicate/raw events
+		// that the session view intentionally folds into a neighboring turn.
+		params.set('match', chunk.excerpt.slice(0, 500));
 
-		const id = Number(value);
-		return Number.isSafeInteger(id) && id > 0 ? id : null;
-	}
-
-	function searchChunkSessionId(chunk: CloudflareSearchChunk): number | null {
-		const metadata = chunk.item?.metadata;
-		if (metadata && typeof metadata === 'object') {
-			const metadataId = integerSessionId(metadata.session_id);
-			if (metadataId !== null) return metadataId;
-		}
-
-		const keyMatch = chunk.item?.key.match(/(?:^|\/)session-(\d+)\.json$/i);
-		return integerSessionId(keyMatch?.[1]);
+		return `?${params}#search-match`;
 	}
 
 	const searchMatches = $derived.by(() => {
@@ -119,7 +128,7 @@
 	const displayedSessions = $derived(
 		searchedQuery
 			? searchMatches
-			: sessions.map((session) => ({ session, chunks: [] as CloudflareSearchChunk[] }))
+			: sessions.map((session) => ({ session, chunks: [] as RenderedSearchChunk[] }))
 	);
 
 	function clearSearch(): void {
@@ -151,7 +160,7 @@
 				`${resolve('/api/user/search')}?${params}`,
 				withStoredAccessToken()
 			);
-			const payload = (await response.json()) as CloudflareSearchResult | ErrorResponse;
+			const payload = (await response.json()) as RenderedSearchResult | ErrorResponse;
 
 			if (requestId !== searchRequestId) return;
 
@@ -311,11 +320,11 @@
 			</Empty.Root>
 		{:else}
 			<section class="mt-8" aria-labelledby="session-count">
-				<form class="mb-6" onsubmit={submitSearch} role="search">
+				<form class="mb-8 max-w-3xl" onsubmit={submitSearch} role="search">
 					<Field.Group>
 						<Field.Field>
 							<Field.Label class="sr-only" for="session-search">Search your sessions</Field.Label>
-							<div class="flex flex-col gap-2 sm:flex-row">
+							<div class="flex flex-col gap-3 sm:flex-row sm:items-start">
 								<Input
 									id="session-search"
 									type="search"
@@ -323,8 +332,12 @@
 									autocomplete="off"
 									bind:value={searchQuery}
 								/>
-								<div class="flex gap-2">
-									<Button type="submit" disabled={searching || !searchQuery.trim()}>
+								<div class="flex gap-2 sm:shrink-0">
+									<Button
+										class="flex-1 sm:flex-none"
+										type="submit"
+										disabled={searching || !searchQuery.trim()}
+									>
 										{#if searching}
 											<Spinner data-icon="inline-start" />
 										{:else}
@@ -333,7 +346,14 @@
 										{searching ? 'Searching...' : 'Search'}
 									</Button>
 									{#if searchedQuery || searchError}
-										<Button type="button" variant="outline" onclick={clearSearch}>Clear</Button>
+										<Button
+											class="flex-1 sm:flex-none"
+											type="button"
+											variant="outline"
+											onclick={clearSearch}
+										>
+											Clear
+										</Button>
 									{/if}
 								</div>
 							</div>
@@ -382,6 +402,42 @@
 							<Button type="button" variant="outline" onclick={clearSearch}>View all sessions</Button>
 						</Empty.Content>
 					</Empty.Root>
+				{:else if searchedQuery}
+					<div class="max-w-3xl">
+						{#each searchMatches as match (match.session.id)}
+							{@const session = match.session}
+							{#each match.chunks as chunk, chunkIndex (chunk.id)}
+								{#snippet resultBadge()}
+									<Badge variant="secondary" class="max-w-64 truncate">
+										{sessionTitle(session.topic, session.id)}
+									</Badge>
+									{#if match.chunks.length > 1}
+										<Badge variant="outline">{chunkIndex + 1} of {match.chunks.length}</Badge>
+									{/if}
+								{/snippet}
+								{#snippet resultAction()}
+									<Button
+										href={`${resolve('/session/[id]', { id: String(session.id) })}${searchChunkHrefSuffix(chunk)}`}
+										variant="ghost"
+										size="sm"
+									>
+										View match
+										<ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
+									</Button>
+								{/snippet}
+								<SessionMessageRow
+									role={chunk.role ?? 'assistant'}
+									provider={session.provider_type}
+									timestamp={chunk.timestamp}
+									formattedTimestamp={formatMessageTime(chunk.timestamp)}
+									badge={resultBadge}
+									action={resultAction}
+								>
+									<Markdown sanitizedHtml={chunk.html} highlight={searchedQuery} />
+								</SessionMessageRow>
+							{/each}
+						{/each}
+					</div>
 				{:else}
 					<div class="grid gap-4 sm:grid-cols-2">
 						{#each displayedSessions as match (match.session.id)}
@@ -409,13 +465,6 @@
 										{formatCreatedTime(session.created_time)}
 									</time>
 								</Card.Content>
-								{#if match.chunks[0]}
-									<Card.Content>
-										<p class="line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">
-											{match.chunks[0].text}
-										</p>
-									</Card.Content>
-								{/if}
 								<Card.Footer>
 									<Button
 										href={resolve('/session/[id]', { id: String(session.id) })}

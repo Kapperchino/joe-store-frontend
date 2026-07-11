@@ -1,8 +1,85 @@
 <script lang="ts">
-	let { sanitizedHtml }: { sanitizedHtml: string } = $props();
+	import type { Action } from 'svelte/action';
+
+	let { sanitizedHtml, highlight = '' }: { sanitizedHtml: string; highlight?: string } = $props();
+
+	type HighlightParams = { query: string; html: string };
+
+	function clearHighlights(node: HTMLElement): void {
+		const parents: ParentNode[] = [];
+		for (const mark of node.querySelectorAll('mark[data-search-highlight]')) {
+			if (mark.parentNode && !parents.includes(mark.parentNode)) parents.push(mark.parentNode);
+			mark.replaceWith(document.createTextNode(mark.textContent ?? ''));
+		}
+		for (const parent of parents) parent.normalize();
+	}
+
+	function escapedPattern(value: string): string {
+		return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
+
+	const highlightText: Action<HTMLElement, HighlightParams> = (node, params) => {
+		function apply({ query }: HighlightParams): void {
+			clearHighlights(node);
+			const phrase = query.trim();
+			if (!phrase) return;
+
+			const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
+				acceptNode(textNode) {
+					const parent = textNode.parentElement;
+					return parent?.closest('mark, script, style')
+						? NodeFilter.FILTER_REJECT
+						: NodeFilter.FILTER_ACCEPT;
+				}
+			});
+			const textNodes: Text[] = [];
+			while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+
+			const hasExactPhrase = textNodes.some((textNode) =>
+				textNode.data.toLocaleLowerCase().includes(phrase.toLocaleLowerCase())
+			);
+			const terms = hasExactPhrase
+				? [phrase]
+				: [...new Set(phrase.split(/\s+/).filter((term) => term.length > 1))];
+			if (terms.length === 0) return;
+
+			const pattern = new RegExp(
+				terms.sort((a, b) => b.length - a.length).map(escapedPattern).join('|'),
+				'giu'
+			);
+
+			for (const textNode of textNodes) {
+				const matches = [...textNode.data.matchAll(pattern)];
+				if (matches.length === 0) continue;
+
+				const fragment = document.createDocumentFragment();
+				let offset = 0;
+				for (const match of matches) {
+					const index = match.index ?? 0;
+					fragment.append(textNode.data.slice(offset, index));
+					const mark = document.createElement('mark');
+					mark.dataset.searchHighlight = '';
+					mark.textContent = match[0];
+					fragment.append(mark);
+					offset = index + match[0].length;
+				}
+				fragment.append(textNode.data.slice(offset));
+				textNode.replaceWith(fragment);
+			}
+		}
+
+		apply(params);
+		return {
+			update: apply,
+			destroy: () => clearHighlights(node)
+		};
+	};
 </script>
 
-<div class="markdown break-words leading-6">
+<div
+	class="markdown break-words leading-6"
+	use:highlightText={{ query: highlight, html: sanitizedHtml }}
+>
 	<!-- Content is sanitized by the server-side Markdown renderer before serialization. -->
 	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 	{@html sanitizedHtml}
@@ -124,5 +201,13 @@
 	.markdown :global(hr) {
 		border: 0;
 		border-top: 1px solid var(--border);
+	}
+
+	.markdown :global(mark[data-search-highlight]) {
+		border-radius: 0.2rem;
+		background: var(--accent);
+		box-shadow: 0 0 0 1px var(--ring);
+		color: var(--accent-foreground);
+		padding-inline: 0.125rem;
 	}
 </style>

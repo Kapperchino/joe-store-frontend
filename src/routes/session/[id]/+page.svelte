@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 	import Share2Icon from '@lucide/svelte/icons/share-2';
+	import SearchIcon from '@lucide/svelte/icons/search';
 	import UserIcon from '@lucide/svelte/icons/user';
 	import UsersIcon from '@lucide/svelte/icons/users';
 	import WrenchIcon from '@lucide/svelte/icons/wrench';
@@ -28,8 +30,10 @@
 	import type { AuthType, ErrorResponse, GrantSessionAuthRes } from '$lib/api';
 	import { providerLabel } from '$lib/provider';
 	import { withStoredAccessToken } from '$lib/auth';
+	import { cn } from '$lib/utils';
 	import CommandChip from './command-chip.svelte';
 	import NotificationChip from './notification-chip.svelte';
+	import SessionMessageRow from './session-message-row.svelte';
 	import type {
 		CommandView,
 		MessagePart,
@@ -37,6 +41,7 @@
 		ToolActivity as ToolActivityData
 	} from './session-view';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { onMount, tick } from 'svelte';
 
 	let { data }: PageProps = $props();
 
@@ -52,6 +57,73 @@
 	let shareUsersDraft = $state<SessionShareDraft | null>(null);
 	let authFeedback = $state<SessionAuthFeedback | null>(null);
 	let pendingAuthorization = $state<SessionPendingAuth | null>(null);
+
+	function messageSearchText(message: (typeof data.session.messages)[number]): string {
+		return message.parts
+			.flatMap((part) => {
+				if (part.kind === 'text') return [part.text];
+				if (part.kind === 'command') {
+					return [part.command.name, part.command.args, part.command.stdout];
+				}
+				if (part.kind === 'notice') return [part.text];
+				if (part.kind === 'notification') {
+					return [part.notification.summary, part.notification.status];
+				}
+				return [part.tool.label, part.tool.input, part.tool.output];
+			})
+			.filter((value): value is string => typeof value === 'string')
+			.join('\n');
+	}
+
+	function fallbackMatchScore(messageText: string, passage: string): number {
+		const haystack = messageText.toLocaleLowerCase();
+		const terms = [
+			...new Set(passage.toLocaleLowerCase().match(/[\p{L}\p{N}_-]{3,}/gu) ?? [])
+		].slice(0, 100);
+		return terms.reduce((score, term) => score + (haystack.includes(term) ? term.length : 0), 0);
+	}
+
+	const searchQuery = $derived(page.url.searchParams.get('search')?.trim() ?? '');
+	const searchEntryIndex = $derived.by(() => {
+		const value = page.url.searchParams.get('entry');
+		if (value === null || !/^\d+$/.test(value)) return null;
+		const index = Number(value);
+		return Number.isSafeInteger(index) ? index : null;
+	});
+	const searchMatchMessage = $derived.by(() => {
+		if (searchEntryIndex !== null) {
+			const exact = data.session.messages.find((message) =>
+				message.sourceIndexes.includes(searchEntryIndex)
+			);
+			if (exact) return exact;
+		}
+
+		const passage = page.url.searchParams.get('match')?.trim();
+		if (!passage) return null;
+		const best = data.session.messages
+			.map((message) => ({ message, score: fallbackMatchScore(messageSearchText(message), passage) }))
+			.sort((a, b) => b.score - a.score)[0];
+		return best && best.score > 0 ? best.message : null;
+	});
+
+	function isSearchMatch(message: (typeof data.session.messages)[number]): boolean {
+		return searchMatchMessage?.id === message.id;
+	}
+
+	function messageAnchorId(message: (typeof data.session.messages)[number]): string {
+		if (isSearchMatch(message)) return 'search-match';
+		return `session-entry-${message.sourceIndexes[0] ?? message.id}`;
+	}
+
+	onMount(() => {
+		if (!searchMatchMessage) return;
+		view = 'all';
+		void tick().then(() => {
+			requestAnimationFrame(() => {
+				document.getElementById('search-match')?.scrollIntoView({ block: 'center' });
+			});
+		});
+	});
 
 	// Render parts in order, but keep runs of consecutive tools together so they
 	// stay tightly spaced while interleaved text breaks them into separate groups.
@@ -473,6 +545,14 @@
 				{@const statusOnly =
 					message.parts.length > 0 &&
 					message.parts.every((part) => part.kind === 'notice' || part.kind === 'notification')}
+				<div
+					id={messageAnchorId(message)}
+					class={cn(
+						'scroll-mt-6',
+						isSearchMatch(message) &&
+							'rounded-xl bg-accent/30 ring-2 ring-ring ring-offset-4 ring-offset-background'
+					)}
+				>
 				{#if collapsed}
 					<button
 						type="button"
@@ -525,64 +605,51 @@
 						{/each}
 					</div>
 				{:else}
-					<article class="border-b border-border py-8">
-					<header class="mb-4 flex flex-wrap items-center justify-between gap-3">
-						<div class="flex items-center gap-2.5">
-							<span
-								class="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground"
+					{#snippet matchBadge()}
+						<Badge variant="secondary">
+							<SearchIcon data-icon="inline-start" aria-hidden="true" />
+							{searchQuery ? `Match for “${searchQuery}”` : 'Search match'}
+						</Badge>
+					{/snippet}
+					{#snippet rowAction()}
+						{#if collapsible}
+							<button
+								type="button"
+								onclick={() => toggleExpanded(message.id)}
+								class="text-muted-foreground transition-colors hover:text-foreground"
+								aria-label="Collapse message"
 							>
-								{#if message.role === 'user'}
-									<UserIcon class="size-4" aria-hidden="true" />
-								{:else if message.role === 'assistant'}
-									{#if data.session.provider === 'openai'}
-										<OpenAIIcon class="size-4" />
-									{:else if data.session.provider === 'cursor'}
-										<MousePointer2Icon class="size-4" aria-hidden="true" />
-									{:else}
-										<ClaudeIcon class="size-4" />
-									{/if}
+								<ChevronUpIcon class="size-4" aria-hidden="true" />
+							</button>
+						{:else if summaryAgent}
+							<button
+								type="button"
+								onclick={() => toggleExpanded(message.id)}
+								class="text-muted-foreground transition-colors hover:text-foreground"
+								aria-label={summaryFinal ? 'Show full turn' : 'Show final message only'}
+							>
+								{#if summaryFinal}
+									<ChevronDownIcon class="size-4" aria-hidden="true" />
 								{:else}
-									<WrenchIcon class="size-4" aria-hidden="true" />
-								{/if}
-							</span>
-							<h3 class="text-sm font-semibold tracking-tight">{roleLabel(message.role)}</h3>
-						</div>
-						<div class="flex items-center gap-3">
-							{#if message.timestamp}
-								<time class="text-xs text-muted-foreground" datetime={message.timestamp}>
-									{formatDate(message.timestamp)}
-								</time>
-							{/if}
-							{#if collapsible}
-								<button
-									type="button"
-									onclick={() => toggleExpanded(message.id)}
-									class="text-muted-foreground transition-colors hover:text-foreground"
-									aria-label="Collapse message"
-								>
 									<ChevronUpIcon class="size-4" aria-hidden="true" />
-								</button>
-							{:else if summaryAgent}
-								<button
-									type="button"
-									onclick={() => toggleExpanded(message.id)}
-									class="text-muted-foreground transition-colors hover:text-foreground"
-									aria-label={summaryFinal ? 'Show full turn' : 'Show final message only'}
-								>
-									{#if summaryFinal}
-										<ChevronDownIcon class="size-4" aria-hidden="true" />
-									{:else}
-										<ChevronUpIcon class="size-4" aria-hidden="true" />
-									{/if}
-								</button>
-							{/if}
-						</div>
-					</header>
-
-					<div class="flex flex-col gap-4 sm:pl-9.5">
+								{/if}
+							</button>
+						{/if}
+					{/snippet}
+					<SessionMessageRow
+						role={message.role}
+						provider={data.session.provider}
+						timestamp={message.timestamp}
+						formattedTimestamp={formatDate(message.timestamp)}
+						badge={isSearchMatch(message) ? matchBadge : undefined}
+						action={collapsible || summaryAgent ? rowAction : undefined}
+					>
 						{#each summaryFinal ? finalTextGroups(message.parts) : groupParts(message.parts) as group, groupIndex (`${message.id}-${groupIndex}`)}
 							{#if group.kind === 'text'}
-								<Markdown sanitizedHtml={group.html} />
+								<Markdown
+									sanitizedHtml={group.html}
+									highlight={isSearchMatch(message) ? searchQuery : ''}
+								/>
 							{:else if group.kind === 'command'}
 								<CommandChip command={group.command} />
 							{:else if group.kind === 'notice'}
@@ -602,9 +669,9 @@
 								</div>
 							{/if}
 						{/each}
-					</div>
-				</article>
+					</SessionMessageRow>
 				{/if}
+				</div>
 			{:else}
 				<p class="py-8 text-sm text-muted-foreground">
 					This session contains metadata, but no displayable messages or tool activity.

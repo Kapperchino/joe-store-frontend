@@ -1,5 +1,5 @@
 import type { ClaudeSessionEntry, CursorSessionEntry, OpenAISessionEntry, Session } from '$lib/api';
-import { renderMarkdown } from './markdown.server';
+import { renderMarkdown } from '$lib/server/markdown';
 
 export type SessionRole = 'user' | 'assistant' | 'tool';
 
@@ -83,6 +83,10 @@ export type MessagePart =
 
 export interface SessionMessageView {
 	id: string;
+	// Original session-entry indexes represented by this rendered turn. Search
+	// indexes the raw entries, so retaining these lets results deep-link to the
+	// exact turn even after adjacent agent entries are merged for display.
+	sourceIndexes: number[];
 	role: SessionRole;
 	timestamp?: string;
 	parts: MessagePart[];
@@ -213,6 +217,10 @@ function finalizeMessage(message: SessionMessageView): SessionMessageView {
 	message.text = textParts.join('\n\n').trim() || undefined;
 	message.tools = tools;
 	return message;
+}
+
+function addSourceIndex(message: SessionMessageView, index: number): void {
+	if (!message.sourceIndexes.includes(index)) message.sourceIndexes.push(index);
 }
 
 export interface SessionView {
@@ -526,6 +534,7 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 					});
 				}
 			}
+			if (resultBlocks.length > 0 && lastAssistant) addSourceIndex(lastAssistant, index);
 
 			if (text) {
 				const parts: MessagePart[] = [];
@@ -533,6 +542,7 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 				if (parts.length > 0) {
 					messages.push({
 						id: entry.uuid || `claude-${index}`,
+						sourceIndexes: [index],
 						role: 'user',
 						timestamp: entry.timestamp,
 						parts,
@@ -548,6 +558,7 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 				} else {
 					messages.push({
 						id: entry.uuid || `claude-${index}`,
+						sourceIndexes: [index],
 						role: 'tool',
 						timestamp: entry.timestamp,
 						parts: orphanResults.map((tool) => ({ kind: 'tool', tool })),
@@ -581,6 +592,7 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 			if (parts.length > 0) {
 				const message: SessionMessageView = {
 					id: entry.uuid || `claude-${index}`,
+					sourceIndexes: [index],
 					role: 'assistant',
 					timestamp: entry.timestamp,
 					parts,
@@ -598,6 +610,7 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 			if (tasks.length > 0) {
 				messages.push({
 					id: entry.uuid || `claude-task-reminder-${index}`,
+					sourceIndexes: [index],
 					role: 'tool',
 					timestamp: entry.timestamp,
 					parts: [{ kind: 'tool', tool: { label: 'Task list', tasks } }],
@@ -690,6 +703,7 @@ function cursorView(data: CursorSessionEntry[]): SessionView {
 		if (parts.length === 0) return;
 		messages.push({
 			id: `cursor-${index}`,
+			sourceIndexes: [index],
 			role: entry.role === 'user' && !hasUserContent ? 'tool' : entry.role,
 			parts,
 			tools: []
@@ -738,6 +752,7 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 					appendText(parts, text);
 					const message: SessionMessageView = {
 						id: `openai-${index}`,
+						sourceIndexes: [index],
 						role: item.role,
 						timestamp: entry.timestamp,
 						parts,
@@ -767,17 +782,19 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 				if (!lastAssistant) {
 					lastAssistant = {
 						id: item.call_id || `openai-${index}`,
+						sourceIndexes: [index],
 						role: 'assistant',
 						timestamp: entry.timestamp,
 						parts: [],
 						tools: []
 					};
 					messages.push(lastAssistant);
-				}
+				} else addSourceIndex(lastAssistant, index);
 				lastAssistant.parts.push({ kind: 'tool', tool: activity });
 			}
 
 			if (item.type === 'function_call_output' || item.type === 'custom_tool_call_output') {
+				if (lastAssistant) addSourceIndex(lastAssistant, index);
 				const existing = toolsById.get(item.call_id);
 				const text = openAIOutputText(item.output);
 				const output = formatDetail(text);
@@ -790,6 +807,7 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 				} else {
 					messages.push({
 						id: `${item.call_id}-output-${index}`,
+						sourceIndexes: [index],
 						role: 'tool',
 						timestamp: entry.timestamp,
 						parts: [{ kind: 'tool', tool: { label: 'Tool result', output, isError } }],
@@ -824,6 +842,7 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 					appendText(parts, text);
 					const message: SessionMessageView = {
 						id: `openai-event-${index}`,
+						sourceIndexes: [index],
 						role: event.type === 'user_message' ? 'user' : 'assistant',
 						timestamp: entry.timestamp,
 						parts,
@@ -873,6 +892,7 @@ function mergeAgentTurns(messages: SessionMessageView[]): SessionMessageView[] {
 		const previous = merged.at(-1);
 
 		if (message.role !== 'user' && previous && previous.role !== 'user') {
+			for (const index of message.sourceIndexes) addSourceIndex(previous, index);
 			for (const part of message.parts) {
 				if (part.kind === 'text') appendText(previous.parts, part.text);
 				else previous.parts.push(part);
@@ -881,7 +901,11 @@ function mergeAgentTurns(messages: SessionMessageView[]): SessionMessageView[] {
 			continue;
 		}
 
-		merged.push({ ...message, parts: [...message.parts] });
+		merged.push({
+			...message,
+			sourceIndexes: [...message.sourceIndexes],
+			parts: [...message.parts]
+		});
 	}
 
 	return merged.map(finalizeMessage);
