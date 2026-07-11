@@ -8,6 +8,7 @@ import type { OpenAIEventMessage } from './openAIEventMessage.ts';
 import type { OpenAIResponseItem } from './openAIResponseItem.ts';
 import type { OpenAISessionMeta } from './openAISessionMeta.ts';
 import type { OpenAITurnContext } from './openAITurnContext.ts';
+import type { OpenAIWorldState } from './openAIWorldState.ts';
 
 export type OpenAISessionEntry = {
   payload: OpenAISessionMeta;
@@ -17,6 +18,10 @@ export type OpenAISessionEntry = {
   payload: OpenAITurnContext;
   timestamp: string;
   type: 'turn_context';
+} | {
+  payload: OpenAIWorldState;
+  timestamp: string;
+  type: 'world_state';
 } | {
   payload: OpenAIEventMessage;
   timestamp: string;

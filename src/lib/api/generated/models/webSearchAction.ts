@@ -15,7 +15,8 @@ export type WebSearchAction = {
   type: 'search';
 } | {
   type: 'open_page';
-  url: string;
+  /** @nullable */
+  url?: string | null;
 } | {
   pattern: string;
   type: 'find_in_page';

@@ -4,14 +4,18 @@
  * joe-store
  * OpenAPI spec version: 0.1.0
  */
+import type { OpenAIHistoryMode } from './openAIHistoryMode.ts';
+import type { OpenAISessionContextWindow } from './openAISessionContextWindow.ts';
 import type { OpenAISessionGit } from './openAISessionGit.ts';
 import type { OpenAIText } from './openAIText.ts';
 
 export interface OpenAISessionMeta {
   base_instructions: OpenAIText;
   cli_version: string;
+  context_window?: null | OpenAISessionContextWindow;
   cwd: string;
   git: OpenAISessionGit;
+  history_mode?: null | OpenAIHistoryMode;
   id: string;
   model_provider: string;
   originator: string;
