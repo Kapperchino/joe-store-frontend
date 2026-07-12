@@ -138,12 +138,13 @@ function parseCommand(text: string): { command: CommandView; remainder: string }
 	return { command: { name, args, stdout }, remainder };
 }
 
-// Claude Code injects these into the user content: a bracketed marker when the
-// user interrupts a turn, and a <task-notification> block when a background task
-// finishes. Both are status events, not prose the user wrote. A single user
-// message can carry several of them interleaved with real text.
+// Agent clients inject these into user content: Claude uses a bracketed marker
+// for interrupted turns, OpenAI uses a <turn_aborted> block, and Claude uses a
+// <task-notification> block when a background task finishes. These are status
+// events, not prose the user wrote. A single user message can carry several of
+// them interleaved with real text.
 const SPECIAL_BLOCK_RE =
-	/\[Request interrupted by user[^\]]*\]|<task-notification>[\s\S]*?<\/task-notification>/gi;
+	/\[Request interrupted by user[^\]]*\]|<turn_aborted(?:\s[^>]*)?>[\s\S]*?<\/turn_aborted\s*>|<task-notification>[\s\S]*?<\/task-notification>/gi;
 
 function tagValue(source: string, tag: string): string | undefined {
 	return source.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i'))?.[1].trim() || undefined;
@@ -180,7 +181,7 @@ function appendUserText(parts: MessagePart[], raw: string | undefined, sourceInd
 		matched = true;
 		appendText(parts, text.slice(lastIndex, match.index), sourceIndex);
 		const token = match[0];
-		if (token.startsWith('[')) {
+		if (token.startsWith('[') || /^<turn_aborted\b/i.test(token)) {
 			parts.push({ kind: 'notice', text: 'Interrupted by user', sourceIndexes: [sourceIndex] });
 		} else {
 			parts.push({
@@ -762,7 +763,8 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 						item.role === 'user'
 							? stripOpenAIEnvironmentContext(contentPart.text)
 							: contentPart.text;
-					appendText(parts, text, index);
+					if (item.role === 'user') appendUserText(parts, text, index);
+					else appendText(parts, text, index);
 				}
 				if (parts.length > 0) {
 					const message: SessionMessageView = {
@@ -851,6 +853,20 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 
 		if (entry.type === 'event_msg') {
 			const event = entry.payload;
+			if (event.type === 'turn_aborted') {
+				messages.push({
+					id: `openai-turn-aborted-${event.turn_id}-${index}`,
+					sourceIndexes: [index],
+					role: 'user',
+					timestamp: entry.timestamp,
+					parts: [
+						{ kind: 'notice', text: 'Interrupted by user', sourceIndexes: [index] }
+					],
+					tools: []
+				});
+				lastAssistant = undefined;
+			}
+
 			if (event.type === 'patch_apply_end') {
 				const state: OpenAIPatchApplyState = {
 					isError: !event.success,
@@ -872,7 +888,8 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 						: event.message.trim() || undefined;
 				if (text) {
 					const parts: MessagePart[] = [];
-					appendText(parts, text, index);
+					if (event.type === 'user_message') appendUserText(parts, text, index);
+					else appendText(parts, text, index);
 					const message: SessionMessageView = {
 						id: `openai-event-${index}`,
 						sourceIndexes: [index],
