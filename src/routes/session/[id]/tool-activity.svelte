@@ -5,7 +5,7 @@
 	import type { ToolActivity } from './session-view';
 	import { diffFromEdit, diffFromPatchSource, type DiffView } from './diff';
 
-	let { tool }: { tool: ToolActivity } = $props();
+	let { tool, expanded = false }: { tool: ToolActivity; expanded?: boolean } = $props();
 
 	// Render edits and patches as a colored diff rather than raw JSON/text.
 	function computeDiff(input: string | undefined): DiffView | null {
@@ -102,7 +102,7 @@
 	);
 </script>
 
-<details class="group" open={diff !== null || (tool.questions?.length ?? 0) > 0}>
+<details class="group" open={expanded || diff !== null || (tool.questions?.length ?? 0) > 0}>
 	<summary
 		class="flex cursor-pointer list-none items-center gap-1.5 font-mono text-xs text-foreground"
 	>

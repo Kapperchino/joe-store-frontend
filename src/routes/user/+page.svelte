@@ -14,7 +14,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import * as Empty from '$lib/components/ui/empty';
 	import * as Field from '$lib/components/ui/field';
-	import { Input } from '$lib/components/ui/input';
+	import * as InputGroup from '$lib/components/ui/input-group';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import JoeStoreMark from '$lib/components/joe-store-mark.svelte';
 	import Markdown from '$lib/components/markdown.svelte';
@@ -319,46 +319,38 @@
 				</Empty.Content>
 			</Empty.Root>
 		{:else}
-			<section class="mt-8" aria-labelledby="session-count">
+			<section class="mt-4" aria-labelledby="session-count">
 				<form class="mb-8 max-w-3xl" onsubmit={submitSearch} role="search">
 					<Field.Group>
 						<Field.Field>
 							<Field.Label class="sr-only" for="session-search">Search your sessions</Field.Label>
-							<div class="flex flex-col gap-3 sm:flex-row sm:items-start">
-								<Input
+							<InputGroup.Root>
+								<InputGroup.Addon>
+									<SearchIcon aria-hidden="true" />
+								</InputGroup.Addon>
+								<InputGroup.Input
 									id="session-search"
 									type="search"
-									placeholder="Search session content..."
+									placeholder="Search message content..."
 									autocomplete="off"
 									bind:value={searchQuery}
 								/>
-								<div class="flex gap-2 sm:shrink-0">
-									<Button
-										class="flex-1 sm:flex-none"
+								<InputGroup.Addon align="inline-end">
+									<InputGroup.Button
 										type="submit"
+										variant="secondary"
 										disabled={searching || !searchQuery.trim()}
 									>
-										{#if searching}
-											<Spinner data-icon="inline-start" />
-										{:else}
-											<SearchIcon data-icon="inline-start" aria-hidden="true" />
-										{/if}
+										{#if searching}<Spinner />{/if}
 										{searching ? 'Searching...' : 'Search'}
-									</Button>
+									</InputGroup.Button>
 									{#if searchedQuery || searchError}
-										<Button
-											class="flex-1 sm:flex-none"
-											type="button"
-											variant="outline"
-											onclick={clearSearch}
-										>
-											Clear
-										</Button>
+										<InputGroup.Button type="button" onclick={clearSearch}>Clear</InputGroup.Button>
 									{/if}
-								</div>
-							</div>
+								</InputGroup.Addon>
+							</InputGroup.Root>
 							<Field.Description>
-								Search across messages and tool output in every session you uploaded.
+								Search across messages in every session you uploaded.
 							</Field.Description>
 						</Field.Field>
 					</Field.Group>

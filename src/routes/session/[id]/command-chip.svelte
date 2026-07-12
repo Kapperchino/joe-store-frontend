@@ -3,7 +3,7 @@
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import type { CommandView } from './session-view';
 
-	let { command }: { command: CommandView } = $props();
+	let { command, expanded = false }: { command: CommandView; expanded?: boolean } = $props();
 
 	// Show the leading slash even when the recorded name omits it, so it reads as
 	// the command the user actually typed.
@@ -22,7 +22,7 @@
 	</div>
 
 	{#if command.stdout}
-		<details class="group/stdout flex flex-col gap-1.5">
+		<details class="group/stdout flex flex-col gap-1.5" open={expanded}>
 			<summary
 				class="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
 			>

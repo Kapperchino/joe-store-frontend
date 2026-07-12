@@ -74,12 +74,20 @@ export interface NotificationView {
 // A message is an ordered sequence of parts so that text and tool activity
 // render in the order they actually occurred (text → tool → text → tool),
 // rather than all prose first followed by a batch of tools.
-export type MessagePart =
-	| { kind: 'text'; text: string; html: string }
-	| { kind: 'tool'; tool: ToolActivity }
-	| { kind: 'command'; command: CommandView }
-	| { kind: 'notice'; text: string }
-	| { kind: 'notification'; notification: NotificationView };
+interface MessagePartSource {
+	// Raw session entries represented by this visible content block. Tool results
+	// can add another source entry to the tool call they complete.
+	sourceIndexes: number[];
+}
+
+export type MessagePart = MessagePartSource &
+	(
+		| { kind: 'text'; text: string; html: string }
+		| { kind: 'tool'; tool: ToolActivity }
+		| { kind: 'command'; command: CommandView }
+		| { kind: 'notice'; text: string }
+		| { kind: 'notification'; notification: NotificationView }
+	);
 
 export interface SessionMessageView {
 	id: string;
@@ -152,15 +160,15 @@ function parseNotification(block: string): NotificationView {
 
 // Append user text, lifting slash commands, interrupt markers, and task
 // notifications into their own parts, and dropping local-command caveat noise.
-function appendUserText(parts: MessagePart[], raw: string | undefined): void {
+function appendUserText(parts: MessagePart[], raw: string | undefined, sourceIndex: number): void {
 	const text = raw?.replace(CAVEAT_RE, '').trim();
 	if (!text) return;
 
 	// Slash command messages stand alone — handle them whole.
 	const parsed = parseCommand(text);
 	if (parsed) {
-		parts.push({ kind: 'command', command: parsed.command });
-		appendText(parts, parsed.remainder);
+		parts.push({ kind: 'command', command: parsed.command, sourceIndexes: [sourceIndex] });
+		appendText(parts, parsed.remainder, sourceIndex);
 		return;
 	}
 
@@ -170,36 +178,40 @@ function appendUserText(parts: MessagePart[], raw: string | undefined): void {
 	let matched = false;
 	for (const match of text.matchAll(SPECIAL_BLOCK_RE)) {
 		matched = true;
-		appendText(parts, text.slice(lastIndex, match.index));
+		appendText(parts, text.slice(lastIndex, match.index), sourceIndex);
 		const token = match[0];
 		if (token.startsWith('[')) {
-			parts.push({ kind: 'notice', text: 'Interrupted by user' });
+			parts.push({ kind: 'notice', text: 'Interrupted by user', sourceIndexes: [sourceIndex] });
 		} else {
-			parts.push({ kind: 'notification', notification: parseNotification(token) });
+			parts.push({
+				kind: 'notification',
+				notification: parseNotification(token),
+				sourceIndexes: [sourceIndex]
+			});
 		}
 		lastIndex = match.index + token.length;
 	}
 
 	if (!matched) {
-		appendText(parts, text);
+		appendText(parts, text, sourceIndex);
 		return;
 	}
-	appendText(parts, text.slice(lastIndex));
+	appendText(parts, text.slice(lastIndex), sourceIndex);
 }
 
-// Append a text block, merging into the trailing text part when one is already
-// there so consecutive prose stays a single markdown unit.
-function appendText(parts: MessagePart[], raw: string | undefined): void {
+// Keep every source text block distinct so each comment can receive its own
+// permalink, even when adjacent agent entries are merged into one visual turn.
+function appendText(parts: MessagePart[], raw: string | undefined, sourceIndex: number): void {
 	const text = raw?.trim();
 	if (!text) return;
-	const last = parts.at(-1);
-	if (last?.kind === 'text') {
-		last.text = `${last.text}\n\n${text}`;
-		last.html = renderMarkdown(last.text);
-	} else {
-		parts.push({ kind: 'text', text, html: renderMarkdown(text) });
-	}
+	parts.push({ kind: 'text', text, html: renderMarkdown(text), sourceIndexes: [sourceIndex] });
 }
+
+function addPartSourceIndex(part: MessagePart, index: number): void {
+	if (!part.sourceIndexes.includes(index)) part.sourceIndexes.push(index);
+}
+
+type ToolMessagePart = MessagePart & { kind: 'tool' };
 
 // Collapse the ordered parts back down to the flat `text`/`tools` fields used by
 // the message preview.
@@ -488,30 +500,20 @@ function range(timestamps: Array<string | undefined>) {
 	return { startedAt: values.at(0), endedAt: values.at(-1) };
 }
 
-function claudeText(entry: Extract<ClaudeSessionEntry, { type: 'user' }>): string | undefined {
-	const content = entry.message.content;
-	if (typeof content === 'string') return content;
-
-	const text = content
-		.filter((block) => block.type === 'text')
-		.map((block) => block.text)
-		.join('\n\n')
-		.trim();
-
-	return text || undefined;
-}
-
 function claudeView(data: ClaudeSessionEntry[]): SessionView {
 	const messages: SessionMessageView[] = [];
 	// Tool calls and their results live in separate entries; track each call by
 	// id so the result can be merged back into the assistant reply that issued it.
-	const toolsById = new Map<string, ToolActivity>();
+	const toolsById = new Map<string, ToolMessagePart>();
 	let lastAssistant: SessionMessageView | undefined;
 
 	data.forEach((entry, index) => {
 		if (entry.type === 'user') {
-			const text = claudeText(entry);
 			const content = entry.message.content;
+			const userTexts =
+				typeof content === 'string'
+					? [content]
+					: content.filter((block) => block.type === 'text').map((block) => block.text);
 			const resultBlocks =
 				typeof content === 'string'
 					? []
@@ -522,10 +524,11 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 				const existing = toolsById.get(block.tool_use_id);
 				const output = formatDetail(block.content);
 				if (existing) {
-					existing.output = output;
-					applyStructuredToolResult(existing, entry.toolUseResult);
-					existing.isError =
-						(block.is_error ?? false) || (existing.task?.success === false);
+					existing.tool.output = output;
+					applyStructuredToolResult(existing.tool, entry.toolUseResult);
+					existing.tool.isError =
+						(block.is_error ?? false) || (existing.tool.task?.success === false);
+					addPartSourceIndex(existing, index);
 				} else {
 					orphanResults.push({
 						label: block.is_error ? 'Tool error' : 'Tool result',
@@ -536,32 +539,32 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 			}
 			if (resultBlocks.length > 0 && lastAssistant) addSourceIndex(lastAssistant, index);
 
-			if (text) {
-				const parts: MessagePart[] = [];
-				appendUserText(parts, text);
-				if (parts.length > 0) {
-					messages.push({
-						id: entry.uuid || `claude-${index}`,
-						sourceIndexes: [index],
-						role: 'user',
-						timestamp: entry.timestamp,
-						parts,
-						tools: []
-					});
-					lastAssistant = undefined;
-				}
+			const userParts: MessagePart[] = [];
+			for (const text of userTexts) appendUserText(userParts, text, index);
+			if (userParts.length > 0) {
+				messages.push({
+					id: entry.uuid || `claude-${index}`,
+					sourceIndexes: [index],
+					role: 'user',
+					timestamp: entry.timestamp,
+					parts: userParts,
+					tools: []
+				});
+				lastAssistant = undefined;
 			}
 
 			if (orphanResults.length > 0) {
 				if (lastAssistant) {
-					for (const tool of orphanResults) lastAssistant.parts.push({ kind: 'tool', tool });
+					for (const tool of orphanResults) {
+						lastAssistant.parts.push({ kind: 'tool', tool, sourceIndexes: [index] });
+					}
 				} else {
 					messages.push({
 						id: entry.uuid || `claude-${index}`,
 						sourceIndexes: [index],
 						role: 'tool',
 						timestamp: entry.timestamp,
-						parts: orphanResults.map((tool) => ({ kind: 'tool', tool })),
+						parts: orphanResults.map((tool) => ({ kind: 'tool', tool, sourceIndexes: [index] })),
 						tools: []
 					});
 				}
@@ -574,7 +577,7 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 			const parts: MessagePart[] = [];
 			for (const block of entry.message.content) {
 				if (block.type === 'text') {
-					appendText(parts, block.text);
+					appendText(parts, block.text, index);
 				} else if (block.type === 'tool_use') {
 					const activity: ToolActivity = {
 						label: String(block.name),
@@ -584,8 +587,13 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 					if (block.name === 'AskUserQuestion') {
 						activity.questions = buildQuestions(block.input);
 					}
-					parts.push({ kind: 'tool', tool: activity });
-					if (block.id) toolsById.set(block.id, activity);
+					const part: ToolMessagePart = {
+						kind: 'tool',
+						tool: activity,
+						sourceIndexes: [index]
+					};
+					parts.push(part);
+					if (block.id) toolsById.set(block.id, part);
 				}
 			}
 
@@ -613,7 +621,7 @@ function claudeView(data: ClaudeSessionEntry[]): SessionView {
 					sourceIndexes: [index],
 					role: 'tool',
 					timestamp: entry.timestamp,
-					parts: [{ kind: 'tool', tool: { label: 'Task list', tasks } }],
+					parts: [{ kind: 'tool', tool: { label: 'Task list', tasks }, sourceIndexes: [index] }],
 					tools: []
 				});
 			}
@@ -653,7 +661,7 @@ function cursorView(data: CursorSessionEntry[]): SessionView {
 	const messages: SessionMessageView[] = [];
 	// Cursor tool calls do not expose their ids in the session payload, while
 	// results do. Pair calls and results in arrival order instead.
-	const pendingTools: ToolActivity[] = [];
+	const pendingTools: ToolMessagePart[] = [];
 
 	data.forEach((entry, index) => {
 		if ('type' in entry) return;
@@ -664,10 +672,10 @@ function cursorView(data: CursorSessionEntry[]): SessionView {
 			if (block.type === 'text') {
 				if (entry.role === 'user') {
 					const previousPartCount = parts.length;
-					appendUserText(parts, block.text);
+					appendUserText(parts, block.text, index);
 					hasUserContent ||= parts.length > previousPartCount;
 				} else {
-					appendText(parts, block.text);
+					appendText(parts, block.text, index);
 				}
 			} else if (block.type === 'tool_use') {
 				const activity: ToolActivity = {
@@ -678,24 +686,31 @@ function cursorView(data: CursorSessionEntry[]): SessionView {
 				if (block.name === 'AskUserQuestion') {
 					activity.questions = buildQuestions(block.input);
 				}
-				parts.push({ kind: 'tool', tool: activity });
-				pendingTools.push(activity);
+				const part: ToolMessagePart = {
+					kind: 'tool',
+					tool: activity,
+					sourceIndexes: [index]
+				};
+				parts.push(part);
+				pendingTools.push(part);
 			} else if (block.type === 'tool_result') {
-				const activity = pendingTools.shift();
+				const toolPart = pendingTools.shift();
 				const output = formatDetail(block.content);
 				const isError = block.is_error ?? false;
-				if (activity) {
-					activity.output = output;
-					applyStructuredToolResult(activity, block.content);
-					activity.isError = isError || activity.task?.success === false;
+				if (toolPart) {
+					toolPart.tool.output = output;
+					applyStructuredToolResult(toolPart.tool, block.content);
+					toolPart.tool.isError = isError || toolPart.tool.task?.success === false;
+					addPartSourceIndex(toolPart, index);
 				} else {
 					parts.push({
 						kind: 'tool',
-						tool: { label: isError ? 'Tool error' : 'Tool result', output, isError }
+						tool: { label: isError ? 'Tool error' : 'Tool result', output, isError },
+						sourceIndexes: [index]
 					});
 				}
 			} else if (block.type === 'image') {
-				appendText(parts, '[Image attachment]');
+				appendText(parts, '[Image attachment]', index);
 				hasUserContent ||= entry.role === 'user';
 			}
 		}
@@ -732,7 +747,7 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 
 	// Tool calls and outputs arrive as separate items; track each call by id so
 	// the output can be merged back into the assistant reply that issued it.
-	const toolsById = new Map<string, ToolActivity>();
+	const toolsById = new Map<string, ToolMessagePart>();
 	const patchApplyByCallId = new Map<string, OpenAIPatchApplyState>();
 	let lastAssistant: SessionMessageView | undefined;
 
@@ -741,15 +756,15 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 			const item = entry.payload;
 
 			if (item.type === 'message' && item.role !== 'developer') {
-				const rawText = item.content
-					.map((part) => part.text)
-					.join('\n\n')
-					.trim();
-				const text =
-					item.role === 'user' ? stripOpenAIEnvironmentContext(rawText) : rawText || undefined;
-				if (text) {
-					const parts: MessagePart[] = [];
-					appendText(parts, text);
+				const parts: MessagePart[] = [];
+				for (const contentPart of item.content) {
+					const text =
+						item.role === 'user'
+							? stripOpenAIEnvironmentContext(contentPart.text)
+							: contentPart.text;
+					appendText(parts, text, index);
+				}
+				if (parts.length > 0) {
 					const message: SessionMessageView = {
 						id: `openai-${index}`,
 						sourceIndexes: [index],
@@ -768,14 +783,11 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 					label: item.name,
 					input: formatDetail(item.type === 'function_call' ? item.arguments : item.input)
 				};
-				if (item.call_id) {
-					toolsById.set(item.call_id, activity);
-					const patchApplyState = patchApplyByCallId.get(item.call_id);
-					if (patchApplyState) {
-						applyOpenAIPatchApplyState(activity, patchApplyState);
-						patchApplyByCallId.delete(item.call_id);
-					}
-				}
+				const part: ToolMessagePart = {
+					kind: 'tool',
+					tool: activity,
+					sourceIndexes: [index]
+				};
 
 				// Attach the call to the assistant turn that issued it; if the model
 				// went straight to a tool with no text, synthesize an assistant reply.
@@ -790,7 +802,16 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 					};
 					messages.push(lastAssistant);
 				} else addSourceIndex(lastAssistant, index);
-				lastAssistant.parts.push({ kind: 'tool', tool: activity });
+				lastAssistant.parts.push(part);
+
+				if (item.call_id) {
+					toolsById.set(item.call_id, part);
+					const patchApplyState = patchApplyByCallId.get(item.call_id);
+					if (patchApplyState) {
+						applyOpenAIPatchApplyState(activity, patchApplyState);
+						patchApplyByCallId.delete(item.call_id);
+					}
+				}
 			}
 
 			if (item.type === 'function_call_output' || item.type === 'custom_tool_call_output') {
@@ -800,17 +821,28 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 				const output = formatDetail(text);
 				const isError = isFailureOutput(text);
 				if (existing) {
-					appendToolOutput(existing, output);
-					existing.isError = Boolean(existing.isError) || isError;
+					appendToolOutput(existing.tool, output);
+					existing.tool.isError = Boolean(existing.tool.isError) || isError;
+					addPartSourceIndex(existing, index);
 				} else if (lastAssistant) {
-					lastAssistant.parts.push({ kind: 'tool', tool: { label: 'Tool result', output, isError } });
+					lastAssistant.parts.push({
+						kind: 'tool',
+						tool: { label: 'Tool result', output, isError },
+						sourceIndexes: [index]
+					});
 				} else {
 					messages.push({
 						id: `${item.call_id}-output-${index}`,
 						sourceIndexes: [index],
 						role: 'tool',
 						timestamp: entry.timestamp,
-						parts: [{ kind: 'tool', tool: { label: 'Tool result', output, isError } }],
+						parts: [
+							{
+								kind: 'tool',
+								tool: { label: 'Tool result', output, isError },
+								sourceIndexes: [index]
+							}
+						],
 						tools: []
 					});
 				}
@@ -826,7 +858,8 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 				};
 				const existing = toolsById.get(event.call_id);
 				if (existing) {
-					applyOpenAIPatchApplyState(existing, state);
+					applyOpenAIPatchApplyState(existing.tool, state);
+					addPartSourceIndex(existing, index);
 				} else {
 					patchApplyByCallId.set(event.call_id, state);
 				}
@@ -839,7 +872,7 @@ function openAIView(data: OpenAISessionEntry[]): SessionView {
 						: event.message.trim() || undefined;
 				if (text) {
 					const parts: MessagePart[] = [];
-					appendText(parts, text);
+					appendText(parts, text, index);
 					const message: SessionMessageView = {
 						id: `openai-event-${index}`,
 						sourceIndexes: [index],
@@ -893,10 +926,7 @@ function mergeAgentTurns(messages: SessionMessageView[]): SessionMessageView[] {
 
 		if (message.role !== 'user' && previous && previous.role !== 'user') {
 			for (const index of message.sourceIndexes) addSourceIndex(previous, index);
-			for (const part of message.parts) {
-				if (part.kind === 'text') appendText(previous.parts, part.text);
-				else previous.parts.push(part);
-			}
+			previous.parts.push(...message.parts);
 			if (message.role === 'assistant') previous.role = 'assistant';
 			continue;
 		}

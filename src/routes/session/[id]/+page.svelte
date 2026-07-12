@@ -4,6 +4,8 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
+	import CheckIcon from '@lucide/svelte/icons/check';
+	import LinkIcon from '@lucide/svelte/icons/link';
 	import Share2Icon from '@lucide/svelte/icons/share-2';
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import UserIcon from '@lucide/svelte/icons/user';
@@ -41,7 +43,7 @@
 		ToolActivity as ToolActivityData
 	} from './session-view';
 	import { SvelteSet } from 'svelte/reactivity';
-	import { onMount, tick } from 'svelte';
+	import { tick, type Snippet } from 'svelte';
 
 	let { data }: PageProps = $props();
 
@@ -110,45 +112,51 @@
 		return searchMatchMessage?.id === message.id;
 	}
 
-	function messageAnchorId(message: (typeof data.session.messages)[number]): string {
-		if (isSearchMatch(message)) return 'search-match';
-		return `session-entry-${message.sourceIndexes[0] ?? message.id}`;
-	}
-
-	onMount(() => {
-		if (!searchMatchMessage) return;
-		view = 'all';
-		void tick().then(() => {
-			requestAnimationFrame(() => {
-				document.getElementById('search-match')?.scrollIntoView({ block: 'center' });
-			});
-		});
-	});
-
 	// Render parts in order, but keep runs of consecutive tools together so they
 	// stay tightly spaced while interleaved text breaks them into separate groups.
+	type RenderTool = {
+		partIndex: number;
+		sourceIndexes: number[];
+		tool: ToolActivityData;
+	};
 	type RenderGroup =
-		| { kind: 'text'; html: string }
-		| { kind: 'tools'; tools: ToolActivityData[] }
-		| { kind: 'command'; command: CommandView }
-		| { kind: 'notice'; text: string }
-		| { kind: 'notification'; notification: NotificationView };
+		| { kind: 'text'; partIndex: number; sourceIndexes: number[]; html: string }
+		| { kind: 'tools'; tools: RenderTool[] }
+		| { kind: 'command'; partIndex: number; sourceIndexes: number[]; command: CommandView }
+		| { kind: 'notice'; partIndex: number; sourceIndexes: number[]; text: string }
+		| {
+				kind: 'notification';
+				partIndex: number;
+				sourceIndexes: number[];
+				notification: NotificationView;
+		  };
 
 	function groupParts(parts: MessagePart[]): RenderGroup[] {
 		const groups: RenderGroup[] = [];
-		for (const part of parts) {
+		for (const [partIndex, part] of parts.entries()) {
 			if (part.kind === 'text') {
-				groups.push({ kind: 'text', html: part.html });
+				groups.push({ kind: 'text', partIndex, sourceIndexes: part.sourceIndexes, html: part.html });
 			} else if (part.kind === 'command') {
-				groups.push({ kind: 'command', command: part.command });
+				groups.push({
+					kind: 'command',
+					partIndex,
+					sourceIndexes: part.sourceIndexes,
+					command: part.command
+				});
 			} else if (part.kind === 'notice') {
-				groups.push({ kind: 'notice', text: part.text });
+				groups.push({ kind: 'notice', partIndex, sourceIndexes: part.sourceIndexes, text: part.text });
 			} else if (part.kind === 'notification') {
-				groups.push({ kind: 'notification', notification: part.notification });
+				groups.push({
+					kind: 'notification',
+					partIndex,
+					sourceIndexes: part.sourceIndexes,
+					notification: part.notification
+				});
 			} else {
 				const last = groups.at(-1);
-				if (last?.kind === 'tools') last.tools.push(part.tool);
-				else groups.push({ kind: 'tools', tools: [part.tool] });
+				const tool = { partIndex, sourceIndexes: part.sourceIndexes, tool: part.tool };
+				if (last?.kind === 'tools') last.tools.push(tool);
+				else groups.push({ kind: 'tools', tools: [tool] });
 			}
 		}
 		return groups;
@@ -166,6 +174,99 @@
 	type View = 'all' | 'user' | 'summary';
 	let view = $state<View>('all');
 	const expanded = new SvelteSet<string>();
+	let copiedBlockId = $state<string | null>(null);
+	let copyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+	type LinkableBlock = {
+		id: string;
+		messageIndex: number;
+		partIndex: number;
+		sourceIndexes: number[];
+	};
+
+	const linkableBlocks = $derived.by(() =>
+		data.session.messages.flatMap((message, messageIndex) =>
+			message.parts.map((part, partIndex) => ({
+				id: `session-content-${messageIndex}-${partIndex}`,
+				messageIndex,
+				partIndex,
+				sourceIndexes: part.sourceIndexes
+			}))
+		)
+	);
+	const sharedEntryIndex = $derived.by(() => {
+		const value = page.url.searchParams.get('index');
+		if (value === null || !/^\d+$/.test(value)) return null;
+		const index = Number(value);
+		return Number.isSafeInteger(index) ? index : null;
+	});
+	const sharedEntryPart = $derived.by(() => {
+		const value = page.url.searchParams.get('part');
+		if (value === null) return 1;
+		if (!/^[1-9]\d*$/.test(value)) return null;
+		const part = Number(value);
+		return Number.isSafeInteger(part) ? part : null;
+	});
+	const sharedBlock = $derived.by(() => {
+		if (sharedEntryIndex === null || sharedEntryPart === null) return null;
+		return (
+			linkableBlocks.filter((block) => block.sourceIndexes.includes(sharedEntryIndex))[
+				sharedEntryPart - 1
+			] ?? null
+		);
+	});
+
+	function blockAt(messageIndex: number, partIndex: number): LinkableBlock {
+		return linkableBlocks.find(
+			(block) => block.messageIndex === messageIndex && block.partIndex === partIndex
+		)!;
+	}
+
+	function isSharedBlock(block: LinkableBlock): boolean {
+		return sharedBlock?.id === block.id;
+	}
+
+	function messageAnchorId(messageIndex: number): string {
+		return `session-message-${messageIndex + 1}`;
+	}
+
+	const focusedTargetId = $derived.by(() => {
+		if (sharedBlock) return sharedBlock.id;
+		if (!searchMatchMessage) return null;
+		const index = data.session.messages.findIndex((message) => message.id === searchMatchMessage.id);
+		return index >= 0 ? messageAnchorId(index) : null;
+	});
+
+	$effect(() => {
+		if (focusedTargetId === null) return;
+		view = 'all';
+		void tick().then(() => {
+			requestAnimationFrame(() => {
+				document.getElementById(focusedTargetId)?.scrollIntoView({ block: 'center' });
+			});
+		});
+	});
+
+	async function copyBlockLink(block: LinkableBlock): Promise<void> {
+		const sourceIndex = block.sourceIndexes[0];
+		const matchingBlocks = linkableBlocks.filter((candidate) =>
+			candidate.sourceIndexes.includes(sourceIndex)
+		);
+		const part = matchingBlocks.findIndex((candidate) => candidate.id === block.id) + 1;
+		const partQuery = matchingBlocks.length > 1 ? `&part=${part}` : '';
+		const url = `${page.url.origin}${page.url.pathname}?index=${sourceIndex}${partQuery}`;
+
+		try {
+			await navigator.clipboard.writeText(url);
+			copiedBlockId = block.id;
+			if (copyFeedbackTimer) clearTimeout(copyFeedbackTimer);
+			copyFeedbackTimer = setTimeout(() => {
+				if (copiedBlockId === block.id) copiedBlockId = null;
+			}, 2000);
+		} catch {
+			copiedBlockId = null;
+		}
+	}
 
 	function toggleExpanded(id: string): void {
 		if (expanded.has(id)) {
@@ -336,6 +437,43 @@
 		await updateAuthorization({ users }, 'users');
 	}
 </script>
+
+{#snippet shareableBlock(block: LinkableBlock, content: Snippet)}
+	<div
+		id={block.id}
+		class={cn(
+			'group/block -mx-5 -my-1 scroll-mt-6 px-5 py-1',
+			isSharedBlock(block) &&
+				'rounded-xl bg-accent/30 ring-2 ring-ring ring-offset-4 ring-offset-background'
+		)}
+	>
+		<div class="flex items-start gap-2">
+			<div class="min-w-0 flex-1">{@render content()}</div>
+			<div
+				class={cn(
+					'-mt-1 shrink-0 opacity-0 transition-opacity group-hover/block:opacity-100 group-focus-within/block:opacity-100',
+					copiedBlockId === block.id && 'opacity-100'
+				)}
+			>
+				<Button
+					variant="ghost"
+					size="icon-xs"
+					onclick={() => copyBlockLink(block)}
+					aria-label={copiedBlockId === block.id
+						? 'Block link copied'
+						: `Copy link to session entry ${block.sourceIndexes[0]}`}
+					title={copiedBlockId === block.id ? 'Link copied' : 'Copy block link'}
+				>
+					{#if copiedBlockId === block.id}
+						<CheckIcon aria-hidden="true" />
+					{:else}
+						<LinkIcon aria-hidden="true" />
+					{/if}
+				</Button>
+			</div>
+		</div>
+	</div>
+{/snippet}
 
 <svelte:head>
 	<title>{data.session.title} | Joe Store</title>
@@ -534,7 +672,7 @@
 				</Button>
 			</div>
 
-			{#each data.session.messages as message (message.id)}
+			{#each data.session.messages as message, messageIndex (message.id)}
 				{@const isAgent = message.role !== 'user'}
 				{@const hasText = message.parts.some((part) => part.kind === 'text')}
 				{@const collapsible =
@@ -545,8 +683,39 @@
 				{@const statusOnly =
 					message.parts.length > 0 &&
 					message.parts.every((part) => part.kind === 'notice' || part.kind === 'notification')}
+				{#snippet matchBadge()}
+					<Badge variant="secondary">
+						<SearchIcon data-icon="inline-start" aria-hidden="true" />
+						{searchQuery ? `Match for “${searchQuery}”` : 'Search match'}
+					</Badge>
+				{/snippet}
+				{#snippet rowAction()}
+					{#if collapsible}
+						<button
+							type="button"
+							onclick={() => toggleExpanded(message.id)}
+							class="text-muted-foreground transition-colors hover:text-foreground"
+							aria-label="Collapse message"
+						>
+							<ChevronUpIcon class="size-4" aria-hidden="true" />
+						</button>
+					{:else if summaryAgent}
+						<button
+							type="button"
+							onclick={() => toggleExpanded(message.id)}
+							class="text-muted-foreground transition-colors hover:text-foreground"
+							aria-label={summaryFinal ? 'Show full turn' : 'Show final message only'}
+						>
+							{#if summaryFinal}
+								<ChevronDownIcon class="size-4" aria-hidden="true" />
+							{:else}
+								<ChevronUpIcon class="size-4" aria-hidden="true" />
+							{/if}
+						</button>
+					{/if}
+				{/snippet}
 				<div
-					id={messageAnchorId(message)}
+					id={messageAnchorId(messageIndex)}
 					class={cn(
 						'scroll-mt-6',
 						isSearchMatch(message) &&
@@ -554,88 +723,65 @@
 					)}
 				>
 				{#if collapsed}
-					<button
-						type="button"
-						onclick={() => toggleExpanded(message.id)}
-						class="flex w-full items-center gap-2.5 border-b border-border py-2.5 text-left text-muted-foreground transition-colors hover:text-foreground"
-					>
-						<span class="flex size-5 shrink-0 items-center justify-center">
-							{#if message.role === 'assistant'}
-								{#if data.session.provider === 'openai'}
-									<OpenAIIcon class="size-3.5" />
-								{:else if data.session.provider === 'cursor'}
-									<MousePointer2Icon class="size-3.5" aria-hidden="true" />
+					<div class="flex items-center border-b border-border">
+						<button
+							type="button"
+							onclick={() => toggleExpanded(message.id)}
+							class="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 text-left text-muted-foreground transition-colors hover:text-foreground"
+						>
+							<span class="flex size-5 shrink-0 items-center justify-center">
+								{#if message.role === 'assistant'}
+									{#if data.session.provider === 'openai'}
+										<OpenAIIcon class="size-3.5" />
+									{:else if data.session.provider === 'cursor'}
+										<MousePointer2Icon class="size-3.5" aria-hidden="true" />
+									{:else}
+										<ClaudeIcon class="size-3.5" />
+									{/if}
+								{:else if message.role === 'user'}
+									<UserIcon class="size-3.5" aria-hidden="true" />
 								{:else}
-									<ClaudeIcon class="size-3.5" />
+									<WrenchIcon class="size-3.5" aria-hidden="true" />
 								{/if}
-							{:else if message.role === 'user'}
-								<UserIcon class="size-3.5" aria-hidden="true" />
-							{:else}
-								<WrenchIcon class="size-3.5" aria-hidden="true" />
-							{/if}
-						</span>
-						<span class="min-w-0 flex-1 truncate text-sm">
-							{message.text?.replace(/\s+/g, ' ').trim() ||
-								(message.tools.length > 0
-									? `${message.tools.length} tool ${message.tools.length === 1 ? 'action' : 'actions'}`
-									: roleLabel(message.role))}
-						</span>
-						<ChevronDownIcon class="size-4 shrink-0" aria-hidden="true" />
-					</button>
+							</span>
+							<span class="min-w-0 flex-1 truncate text-sm">
+								{message.text?.replace(/\s+/g, ' ').trim() ||
+									(message.tools.length > 0
+										? `${message.tools.length} tool ${message.tools.length === 1 ? 'action' : 'actions'}`
+										: roleLabel(message.role))}
+							</span>
+							<ChevronDownIcon class="size-4 shrink-0" aria-hidden="true" />
+						</button>
+					</div>
 				{:else if statusOnly}
 					<div class="flex flex-col gap-1.5 border-b border-border py-2.5">
 						{#each groupParts(message.parts) as group, groupIndex (`${message.id}-${groupIndex}`)}
-							<div class="flex items-center gap-2">
-								{#if group.kind === 'notice'}
-									<span class="flex min-w-0 flex-1 items-center gap-2 text-xs font-medium text-muted-foreground">
-										<OctagonXIcon class="size-3.5 shrink-0" aria-hidden="true" />
-										<span class="truncate">{group.text}</span>
-									</span>
-								{:else if group.kind === 'notification'}
-									<span class="min-w-0 flex-1">
-										<NotificationChip notification={group.notification} />
-									</span>
-								{/if}
-								{#if groupIndex === 0 && message.timestamp}
-									<time class="shrink-0 text-xs text-muted-foreground" datetime={message.timestamp}>
-										{formatDate(message.timestamp)}
-									</time>
-								{/if}
-							</div>
+							{#if group.kind !== 'tools'}
+								{@const block = blockAt(messageIndex, group.partIndex)}
+								{#snippet statusContent()}
+									<div class="flex items-center gap-2">
+										{#if group.kind === 'notice'}
+											<span class="flex min-w-0 flex-1 items-center gap-2 text-xs font-medium text-muted-foreground">
+												<OctagonXIcon class="size-3.5 shrink-0" aria-hidden="true" />
+												<span class="truncate">{group.text}</span>
+											</span>
+										{:else if group.kind === 'notification'}
+											<span class="min-w-0 flex-1">
+												<NotificationChip notification={group.notification} />
+											</span>
+										{/if}
+										{#if groupIndex === 0 && message.timestamp}
+											<time class="shrink-0 text-xs text-muted-foreground" datetime={message.timestamp}>
+												{formatDate(message.timestamp)}
+											</time>
+										{/if}
+									</div>
+								{/snippet}
+								{@render shareableBlock(block, statusContent)}
+							{/if}
 						{/each}
 					</div>
 				{:else}
-					{#snippet matchBadge()}
-						<Badge variant="secondary">
-							<SearchIcon data-icon="inline-start" aria-hidden="true" />
-							{searchQuery ? `Match for “${searchQuery}”` : 'Search match'}
-						</Badge>
-					{/snippet}
-					{#snippet rowAction()}
-						{#if collapsible}
-							<button
-								type="button"
-								onclick={() => toggleExpanded(message.id)}
-								class="text-muted-foreground transition-colors hover:text-foreground"
-								aria-label="Collapse message"
-							>
-								<ChevronUpIcon class="size-4" aria-hidden="true" />
-							</button>
-						{:else if summaryAgent}
-							<button
-								type="button"
-								onclick={() => toggleExpanded(message.id)}
-								class="text-muted-foreground transition-colors hover:text-foreground"
-								aria-label={summaryFinal ? 'Show full turn' : 'Show final message only'}
-							>
-								{#if summaryFinal}
-									<ChevronDownIcon class="size-4" aria-hidden="true" />
-								{:else}
-									<ChevronUpIcon class="size-4" aria-hidden="true" />
-								{/if}
-							</button>
-						{/if}
-					{/snippet}
 					<SessionMessageRow
 						role={message.role}
 						provider={data.session.provider}
@@ -645,28 +791,44 @@
 						action={collapsible || summaryAgent ? rowAction : undefined}
 					>
 						{#each summaryFinal ? finalTextGroups(message.parts) : groupParts(message.parts) as group, groupIndex (`${message.id}-${groupIndex}`)}
-							{#if group.kind === 'text'}
-								<Markdown
-									sanitizedHtml={group.html}
-									highlight={isSearchMatch(message) ? searchQuery : ''}
-								/>
-							{:else if group.kind === 'command'}
-								<CommandChip command={group.command} />
-							{:else if group.kind === 'notice'}
-								<div
-									class="flex items-center gap-2 text-xs font-medium text-muted-foreground"
-								>
-									<OctagonXIcon class="size-3.5 shrink-0" aria-hidden="true" />
-									<span>{group.text}</span>
-								</div>
-							{:else if group.kind === 'notification'}
-								<NotificationChip notification={group.notification} />
-							{:else}
+							{#if group.kind === 'tools'}
 								<div class="flex flex-col gap-1.5">
-									{#each group.tools as tool, index (`${message.id}-${groupIndex}-${index}`)}
-										<ToolActivity {tool} />
+									{#each group.tools as item, index (`${message.id}-${groupIndex}-${index}`)}
+										{@const block = blockAt(messageIndex, item.partIndex)}
+										{#snippet toolContent()}
+											<ToolActivity
+												tool={item.tool}
+												expanded={isSharedBlock(block)}
+											/>
+										{/snippet}
+										{@render shareableBlock(block, toolContent)}
 									{/each}
 								</div>
+							{:else}
+								{@const block = blockAt(messageIndex, group.partIndex)}
+								{#snippet groupContent()}
+									{#if group.kind === 'text'}
+										<Markdown
+											sanitizedHtml={group.html}
+											highlight={isSearchMatch(message) ? searchQuery : ''}
+										/>
+									{:else if group.kind === 'command'}
+										<CommandChip
+											command={group.command}
+											expanded={isSharedBlock(block)}
+										/>
+									{:else if group.kind === 'notice'}
+										<div
+											class="flex items-center gap-2 text-xs font-medium text-muted-foreground"
+										>
+											<OctagonXIcon class="size-3.5 shrink-0" aria-hidden="true" />
+											<span>{group.text}</span>
+										</div>
+									{:else}
+										<NotificationChip notification={group.notification} />
+									{/if}
+								{/snippet}
+								{@render shareableBlock(block, groupContent)}
 							{/if}
 						{/each}
 					</SessionMessageRow>
