@@ -8,34 +8,32 @@
 	import LinkIcon from '@lucide/svelte/icons/link';
 	import Share2Icon from '@lucide/svelte/icons/share-2';
 	import SearchIcon from '@lucide/svelte/icons/search';
-	import UserIcon from '@lucide/svelte/icons/user';
 	import UsersIcon from '@lucide/svelte/icons/users';
-	import WrenchIcon from '@lucide/svelte/icons/wrench';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import OctagonXIcon from '@lucide/svelte/icons/octagon-x';
-	import MousePointer2Icon from '@lucide/svelte/icons/mouse-pointer-2';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
+	import * as Field from '$lib/components/ui/field';
 	import * as Popover from '$lib/components/ui/popover';
 	import { Separator } from '$lib/components/ui/separator';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { Textarea } from '$lib/components/ui/textarea';
+	import * as ToggleGroup from '$lib/components/ui/toggle-group';
+	import SessionHeader from '$lib/components/brainless/session-header.svelte';
 	import Markdown from '$lib/components/markdown.svelte';
 	import ToolActivity from './tool-activity.svelte';
-	import OpenAIIcon from './openai-icon.svelte';
-	import ClaudeIcon from './claude-icon.svelte';
 	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import type { PageProps } from './$types';
 	import type { AuthType, ErrorResponse, GrantSessionAuthRes } from '$lib/api';
-	import { providerLabel } from '$lib/provider';
 	import { withStoredAccessToken } from '$lib/auth';
 	import { cn } from '$lib/utils';
 	import CommandChip from './command-chip.svelte';
 	import NotificationChip from './notification-chip.svelte';
-	import SessionMessageRow from './session-message-row.svelte';
+	import SessionMessage from '$lib/components/brainless/session-message.svelte';
 	import type {
 		CommandView,
 		MessagePart,
@@ -295,18 +293,10 @@
 
 	const properties = $derived(
 		[
-			{ label: 'Provider', value: providerLabel(data.session.provider) },
-			{ label: 'Model', value: data.session.model ?? 'Unknown' },
 			{ label: 'Entries', value: data.session.entryCount.toLocaleString() },
 			{ label: 'Messages', value: data.session.messages.length.toLocaleString() },
 			{ label: 'Started', value: formatDate(data.session.startedAt) },
 			{ label: 'Updated', value: formatDate(data.session.endedAt) },
-			...(data.session.branch
-				? [{ label: 'Branch', value: data.session.branch, mono: true }]
-				: []),
-			...(data.session.cwd
-				? [{ label: 'Working directory', value: data.session.cwd, mono: true }]
-				: []),
 			...(data.session.sessionIdentifier
 				? [{ label: 'Session', value: data.session.sessionIdentifier, mono: true }]
 				: [])
@@ -552,19 +542,24 @@
 							{/if}
 
 							<form class="flex flex-col gap-3" onsubmit={shareWithUsers}>
-								<div class="flex flex-col gap-1.5">
-									<label for="share-users" class="text-sm font-medium">Shared users</label>
-									<textarea
-										id="share-users"
-										value={shareUsersInput}
-										oninput={updateShareUsersInput}
-										rows="3"
-										aria-invalid={authError ? 'true' : undefined}
-										disabled={authorizationPending}
-										class="min-h-24 w-full resize-y rounded-2xl border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20"
-										placeholder="user_id_1, user_id_2"
-									></textarea>
-								</div>
+								<Field.Group>
+									<Field.Field data-invalid={authError ? '' : undefined}>
+										<Field.Label for="share-users">Shared users</Field.Label>
+										<Textarea
+											id="share-users"
+											value={shareUsersInput}
+											oninput={updateShareUsersInput}
+											rows={3}
+											aria-invalid={authError ? 'true' : undefined}
+											disabled={authorizationPending}
+											class="min-h-24 resize-y"
+											placeholder="user_id_1, user_id_2"
+										/>
+										<Field.Description>
+											Separate user IDs with commas, spaces, or new lines.
+										</Field.Description>
+									</Field.Field>
+								</Field.Group>
 
 								<div class="flex flex-wrap items-center gap-2">
 									<Button type="submit" variant="outline" size="sm" disabled={authorizationPending}>
@@ -626,53 +621,32 @@
 				</Popover.Root>
 			</div>
 
-			<dl class="mt-6 flex flex-col gap-px">
-				{#each properties as property (property.label)}
-					<div class="flex items-baseline gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50">
-						<dt class="w-36 shrink-0 text-sm text-muted-foreground">{property.label}</dt>
-						<dd
-							class="min-w-0 flex-1 break-words text-sm {property.mono ? 'font-mono text-xs' : ''}"
-						>
-							{property.value}
-						</dd>
-					</div>
-				{/each}
-			</dl>
 		</header>
-
-		<Separator class="mb-2" />
 
 		<section aria-labelledby="conversation-heading">
 			<h2 id="conversation-heading" class="sr-only">Conversation</h2>
 
-			<div class="flex items-center justify-end gap-1 pt-4">
-				<Button
-					variant={view === 'all' ? 'secondary' : 'ghost'}
-					size="sm"
-					aria-pressed={view === 'all'}
-					onclick={() => (view = 'all')}
-				>
-					All
-				</Button>
-				<Button
-					variant={view === 'summary' ? 'secondary' : 'ghost'}
-					size="sm"
-					aria-pressed={view === 'summary'}
-					onclick={() => (view = 'summary')}
-				>
-					Short
-				</Button>
-				<Button
-					variant={view === 'user' ? 'secondary' : 'ghost'}
-					size="sm"
-					aria-pressed={view === 'user'}
-					onclick={() => (view = 'user')}
-				>
-					User only
-				</Button>
+			<div class="flex items-center justify-end pt-4">
+				<ToggleGroup.Root type="single" variant="outline" size="sm" bind:value={view}>
+					<ToggleGroup.Item value="all">All</ToggleGroup.Item>
+					<ToggleGroup.Item value="summary">Short</ToggleGroup.Item>
+					<ToggleGroup.Item value="user">User only</ToggleGroup.Item>
+				</ToggleGroup.Root>
 			</div>
 
-			{#each data.session.messages as message, messageIndex (message.id)}
+			<div
+				class="brainless-terminal mt-4 rounded-[6px] border border-brainless-border p-3 shadow-2xl sm:p-5"
+			>
+				<SessionHeader
+					provider={data.session.provider}
+					model={data.session.model}
+					cwd={data.session.cwd}
+					branch={data.session.branch}
+					{properties}
+				/>
+
+				<div class="mt-4 flex flex-col gap-3">
+				{#each data.session.messages as message, messageIndex (message.id)}
 				{@const isAgent = message.role !== 'user'}
 				{@const hasText = message.parts.some((part) => part.kind === 'text')}
 				{@const collapsible =
@@ -691,27 +665,27 @@
 				{/snippet}
 				{#snippet rowAction()}
 					{#if collapsible}
-						<button
-							type="button"
+						<Button
+							variant="ghost"
+							size="icon-xs"
 							onclick={() => toggleExpanded(message.id)}
-							class="text-muted-foreground transition-colors hover:text-foreground"
 							aria-label="Collapse message"
 						>
-							<ChevronUpIcon class="size-4" aria-hidden="true" />
-						</button>
+							<ChevronUpIcon aria-hidden="true" />
+						</Button>
 					{:else if summaryAgent}
-						<button
-							type="button"
+						<Button
+							variant="ghost"
+							size="icon-xs"
 							onclick={() => toggleExpanded(message.id)}
-							class="text-muted-foreground transition-colors hover:text-foreground"
 							aria-label={summaryFinal ? 'Show full turn' : 'Show final message only'}
 						>
 							{#if summaryFinal}
-								<ChevronDownIcon class="size-4" aria-hidden="true" />
+								<ChevronDownIcon aria-hidden="true" />
 							{:else}
-								<ChevronUpIcon class="size-4" aria-hidden="true" />
+								<ChevronUpIcon aria-hidden="true" />
 							{/if}
-						</button>
+						</Button>
 					{/if}
 				{/snippet}
 				<div
@@ -723,34 +697,22 @@
 					)}
 				>
 				{#if collapsed}
-					<div class="flex items-center border-b border-border">
+					<div class="flex items-center font-mono text-[13px]">
 						<button
 							type="button"
 							onclick={() => toggleExpanded(message.id)}
-							class="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 text-left text-muted-foreground transition-colors hover:text-foreground"
+							class="flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left text-brainless-muted transition-colors hover:text-brainless-strong"
 						>
-							<span class="flex size-5 shrink-0 items-center justify-center">
-								{#if message.role === 'assistant'}
-									{#if data.session.provider === 'openai'}
-										<OpenAIIcon class="size-3.5" />
-									{:else if data.session.provider === 'cursor'}
-										<MousePointer2Icon class="size-3.5" aria-hidden="true" />
-									{:else}
-										<ClaudeIcon class="size-3.5" />
-									{/if}
-								{:else if message.role === 'user'}
-									<UserIcon class="size-3.5" aria-hidden="true" />
-								{:else}
-									<WrenchIcon class="size-3.5" aria-hidden="true" />
-								{/if}
+							<span class="shrink-0 text-brainless-success" aria-hidden="true">
+								{data.session.provider === 'claude' ? '⏺' : '•'}
 							</span>
-							<span class="min-w-0 flex-1 truncate text-sm">
+							<span class="min-w-0 flex-1 truncate">
 								{message.text?.replace(/\s+/g, ' ').trim() ||
 									(message.tools.length > 0
 										? `${message.tools.length} tool ${message.tools.length === 1 ? 'action' : 'actions'}`
 										: roleLabel(message.role))}
 							</span>
-							<ChevronDownIcon class="size-4 shrink-0" aria-hidden="true" />
+							<span class="shrink-0 text-brainless-dim" aria-hidden="true">▸</span>
 						</button>
 					</div>
 				{:else if statusOnly}
@@ -767,7 +729,10 @@
 											</span>
 										{:else if group.kind === 'notification'}
 											<span class="min-w-0 flex-1">
-												<NotificationChip notification={group.notification} />
+											<NotificationChip
+												notification={group.notification}
+												provider={data.session.provider}
+											/>
 											</span>
 										{/if}
 										{#if groupIndex === 0 && message.timestamp}
@@ -782,7 +747,7 @@
 						{/each}
 					</div>
 				{:else}
-					<SessionMessageRow
+					<SessionMessage
 						role={message.role}
 						provider={data.session.provider}
 						timestamp={message.timestamp}
@@ -798,6 +763,7 @@
 										{#snippet toolContent()}
 											<ToolActivity
 												tool={item.tool}
+												provider={data.session.provider}
 												expanded={isSharedBlock(block)}
 											/>
 										{/snippet}
@@ -813,9 +779,10 @@
 											highlight={isSearchMatch(message) ? searchQuery : ''}
 										/>
 									{:else if group.kind === 'command'}
-										<CommandChip
-											command={group.command}
-											expanded={isSharedBlock(block)}
+									<CommandChip
+										command={group.command}
+										provider={data.session.provider}
+										expanded={isSharedBlock(block)}
 										/>
 									{:else if group.kind === 'notice'}
 										<div
@@ -825,20 +792,25 @@
 											<span>{group.text}</span>
 										</div>
 									{:else}
-										<NotificationChip notification={group.notification} />
+									<NotificationChip
+										notification={group.notification}
+										provider={data.session.provider}
+									/>
 									{/if}
 								{/snippet}
 								{@render shareableBlock(block, groupContent)}
 							{/if}
 						{/each}
-					</SessionMessageRow>
+					</SessionMessage>
 				{/if}
 				</div>
-			{:else}
-				<p class="py-8 text-sm text-muted-foreground">
-					This session contains metadata, but no displayable messages or tool activity.
-				</p>
-			{/each}
+				{:else}
+					<p class="py-8 font-mono text-[13px] text-brainless-muted">
+						This session contains metadata, but no displayable messages or tool activity.
+					</p>
+				{/each}
+				</div>
+			</div>
 		</section>
 	</div>
 </main>

@@ -39,7 +39,7 @@
 	} from '$lib/auth';
 	import { onMount } from 'svelte';
 	import { SvelteURLSearchParams } from 'svelte/reactivity';
-	import SessionMessageRow from '../session/[id]/session-message-row.svelte';
+	import SessionMessage from '$lib/components/brainless/session-message.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -417,16 +417,20 @@
 										<ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
 									</Button>
 								{/snippet}
-								<SessionMessageRow
-									role={chunk.role ?? 'assistant'}
-									provider={session.provider_type}
-									timestamp={chunk.timestamp}
-									formattedTimestamp={formatMessageTime(chunk.timestamp)}
-									badge={resultBadge}
-									action={resultAction}
+								<div
+									class="brainless-terminal mb-3 rounded-[6px] border border-brainless-border p-4"
 								>
-									<Markdown sanitizedHtml={chunk.html} highlight={searchedQuery} />
-								</SessionMessageRow>
+									<SessionMessage
+										role={chunk.role ?? 'assistant'}
+										provider={session.provider_type}
+										timestamp={chunk.timestamp}
+										formattedTimestamp={formatMessageTime(chunk.timestamp)}
+										badge={resultBadge}
+										action={resultAction}
+									>
+										<Markdown sanitizedHtml={chunk.html} highlight={searchedQuery} />
+									</SessionMessage>
+								</div>
 							{/each}
 						{/each}
 					</div>

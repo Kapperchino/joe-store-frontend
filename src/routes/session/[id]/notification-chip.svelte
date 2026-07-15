@@ -1,27 +1,33 @@
 <script lang="ts">
-	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
-	import CircleXIcon from '@lucide/svelte/icons/circle-x';
-	import BellIcon from '@lucide/svelte/icons/bell';
+	import type { ProviderType } from '$lib/api';
+	import { cn } from '$lib/utils';
 	import type { NotificationView } from './session-view';
 
-	let { notification }: { notification: NotificationView } = $props();
+	let {
+		notification,
+		provider
+	}: { notification: NotificationView; provider: ProviderType } = $props();
 
 	const status = $derived(notification.status?.toLowerCase());
 	const failed = $derived(status === 'failed' || status === 'error');
 	const succeeded = $derived(status === 'completed' || status === 'success' || status === 'done');
 </script>
 
-<div
-	class="flex items-center gap-2 text-xs font-medium {failed
-		? 'text-destructive'
-		: 'text-muted-foreground'}"
->
-	{#if failed}
-		<CircleXIcon class="size-3.5 shrink-0" aria-hidden="true" />
-	{:else if succeeded}
-		<CircleCheckIcon class="size-3.5 shrink-0 text-green-700 dark:text-green-400" aria-hidden="true" />
-	{:else}
-		<BellIcon class="size-3.5 shrink-0" aria-hidden="true" />
-	{/if}
-	<span class="min-w-0 truncate">{notification.summary ?? 'Task notification'}</span>
+<div class="flex min-w-0 items-baseline gap-2 font-mono text-[13px] leading-[1.55]">
+	<span
+		aria-hidden="true"
+		class={cn(
+			'shrink-0',
+			failed
+				? 'text-brainless-error'
+				: succeeded
+					? 'text-brainless-success'
+					: 'text-brainless-warning'
+		)}
+	>
+		{provider === 'claude' ? '⏺' : '•'}
+	</span>
+	<span class={cn('min-w-0 truncate', failed ? 'text-brainless-error' : 'text-brainless-muted')}>
+		{notification.summary ?? 'Task notification'}
+	</span>
 </div>

@@ -2,10 +2,18 @@
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { Badge } from '$lib/components/ui/badge';
+	import type { ProviderType } from '$lib/api';
+	import ClaudeToolCall from '$lib/components/brainless/claude/claude-tool-call.svelte';
+	import CodexExec from '$lib/components/brainless/codex/codex-exec.svelte';
+	import { cn } from '$lib/utils';
 	import type { ToolActivity } from './session-view';
 	import { diffFromEdit, diffFromPatchSource, type DiffView } from './diff';
 
-	let { tool, expanded = false }: { tool: ToolActivity; expanded?: boolean } = $props();
+	let {
+		tool,
+		provider,
+		expanded = false
+	}: { tool: ToolActivity; provider: ProviderType; expanded?: boolean } = $props();
 
 	// Render edits and patches as a colored diff rather than raw JSON/text.
 	function computeDiff(input: string | undefined): DiffView | null {
@@ -48,6 +56,10 @@
 			.split('\n')
 			.map((line) => line.trim())
 			.find((line) => line.length > 0) ?? '';
+	}
+
+	function concise(value: string, maxLength = 96): string {
+		return value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
 	}
 
 	function summarize(input: string): string {
@@ -100,28 +112,25 @@
 						? summarize(tool.input)
 						: undefined
 	);
+	const resultPreview = $derived.by(() => {
+		if (tool.isError) return 'Failed';
+		if (diff) {
+			const count = diff.files.length;
+			return `${count} ${count === 1 ? 'file' : 'files'} updated`;
+		}
+		if (tool.output) return concise(firstLine(tool.output));
+		if (tool.task?.status) return statusLabel(tool.task.status);
+		if (tool.tasks?.length) return `${tool.tasks.length} tasks`;
+		if (tool.persistedOutput) return `Saved ${tool.persistedOutput.path}`;
+		return 'Completed';
+	});
+	const defaultOpen = $derived(
+		expanded || diff !== null || (tool.questions?.length ?? 0) > 0
+	);
 </script>
 
-<details class="group" open={expanded || diff !== null || (tool.questions?.length ?? 0) > 0}>
-	<summary
-		class="flex cursor-pointer list-none items-center gap-1.5 font-mono text-xs text-foreground"
-	>
-		<ChevronRightIcon
-			class="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
-			aria-hidden="true"
-		/>
-		<span class="shrink-0 font-medium">{tool.label}</span>
-		{#if tool.isError}
-			<span class="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive"
-				>Error</span
-			>
-		{/if}
-		{#if preview}
-			<span class="min-w-0 flex-1 truncate text-muted-foreground group-open:hidden">{preview}</span>
-		{/if}
-	</summary>
-
-	<div class="mt-2 ml-1.5 flex flex-col gap-3 border-l border-border pl-3">
+{#snippet activityDetails()}
+	<div class="flex flex-col gap-3">
 		{#if tool.questions?.length}
 			{#each tool.questions as question, qIndex (qIndex)}
 				<div class="flex flex-col gap-2 font-sans">
@@ -134,24 +143,26 @@
 					<div class="flex flex-col gap-1.5">
 						{#each question.options as option, oIndex (oIndex)}
 							<div
-								class="flex items-start gap-2 rounded-md border px-2.5 py-1.5 {option.selected
-									? 'border-green-500/60 bg-green-500/10'
-									: 'border-border'}"
+								class={cn(
+									'flex items-start gap-2 rounded-md border px-2.5 py-1.5',
+									option.selected ? 'border-primary/50 bg-primary/5' : 'border-border'
+								)}
 							>
 								<span class="flex size-4 shrink-0 items-center justify-center">
 									{#if option.selected}
-										<CheckIcon class="size-3.5 text-green-700 dark:text-green-400" />
+										<CheckIcon class="size-3.5 text-primary" />
 									{/if}
 								</span>
 								<div class="flex min-w-0 flex-col gap-0.5">
 									<span
-										class="text-xs font-medium {option.selected
-											? 'text-foreground'
-											: 'text-muted-foreground'}"
+										class={cn(
+											'text-xs font-medium',
+											option.selected ? 'text-foreground' : 'text-muted-foreground'
+										)}
 									>
 										{option.label}
 										{#if option.selected}
-											<span class="text-green-700 dark:text-green-400">· chosen</span>
+											<span class="text-primary">· chosen</span>
 										{/if}
 									</span>
 									{#if option.description}
@@ -264,9 +275,9 @@
 				<div class="flex flex-col gap-1.5">
 					<p class="flex flex-wrap items-center gap-1.5 font-mono text-xs">
 						{#if file.op === 'add'}
-							<span class="font-medium text-green-700 dark:text-green-400">added</span>
+							<span class="font-medium text-success">added</span>
 						{:else if file.op === 'delete'}
-							<span class="font-medium text-red-700 dark:text-red-400">deleted</span>
+							<span class="font-medium text-destructive">deleted</span>
 						{:else if file.op === 'move'}
 							<span class="font-medium text-muted-foreground">moved</span>
 						{/if}
@@ -280,13 +291,13 @@
 						<pre
 							class="overflow-x-auto rounded-md border border-border text-xs leading-5"><code
 								>{#each file.lines as line, index (index)}<span
-										class="block px-2 {line.type === 'add'
-											? 'bg-green-500/10 text-green-700 dark:text-green-400'
-											: line.type === 'del'
-												? 'bg-red-500/10 text-red-700 dark:text-red-400'
-												: line.type === 'meta'
-													? 'text-muted-foreground'
-													: 'text-foreground'}"
+										class={cn(
+											'block px-2',
+											line.type === 'add' && 'bg-success/10 text-success',
+											line.type === 'del' && 'bg-destructive/10 text-destructive',
+											line.type === 'meta' && 'text-muted-foreground',
+											line.type === 'context' && 'text-foreground'
+										)}
 										>{line.type === 'add' ? '+' : line.type === 'del' ? '-' : ' '}{line.text}</span
 									>{/each}</code
 							></pre>
@@ -327,4 +338,25 @@
 			</div>
 		{/if}
 	</div>
-</details>
+{/snippet}
+
+{#if provider === 'claude'}
+	<ClaudeToolCall
+		tool={tool.label}
+		arg={preview}
+		result={resultPreview}
+		status={tool.isError ? 'error' : 'success'}
+		{defaultOpen}
+	>
+		{@render activityDetails()}
+	</ClaudeToolCall>
+{:else}
+	<CodexExec
+		command={[tool.label, preview].filter(Boolean).join(' ')}
+		result={tool.isError ? '→ failed' : undefined}
+		status={tool.isError ? 'error' : 'ok'}
+		{defaultOpen}
+	>
+		{@render activityDetails()}
+	</CodexExec>
+{/if}

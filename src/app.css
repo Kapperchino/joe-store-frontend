@@ -22,6 +22,23 @@
 	--accent: oklch(0.97 0 0);
 	--accent-foreground: oklch(0.205 0 0);
 	--destructive: oklch(0.577 0.245 27.325);
+	--success: oklch(0.527 0.154 150.069);
+	--brainless-background: oklch(0.985 0.004 286);
+	--brainless-panel: oklch(1 0 0);
+	--brainless-subtle: oklch(0.945 0.006 286);
+	--brainless-accent-surface: oklch(0.925 0.01 286);
+	--brainless-foreground: oklch(0.28 0.035 275);
+	--brainless-strong: oklch(0.18 0.01 286);
+	--brainless-muted: oklch(0.48 0.015 286);
+	--brainless-dim: oklch(0.64 0.02 275);
+	--brainless-border: oklch(0.84 0.01 286);
+	--brainless-user: oklch(0.915 0.012 286);
+	--brainless-claude: oklch(0.48 0.15 35);
+	--brainless-accent: oklch(0.46 0.11 230);
+	--brainless-codex: oklch(0.45 0.1 225);
+	--brainless-success: oklch(0.45 0.13 150);
+	--brainless-error: oklch(0.52 0.2 20);
+	--brainless-warning: oklch(0.5 0.11 75);
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: oklch(0.708 0 0);
@@ -56,6 +73,23 @@
 	--accent: oklch(0.371 0 0);
 	--accent-foreground: oklch(0.985 0 0);
 	--destructive: oklch(0.704 0.191 22.216);
+	--success: oklch(0.723 0.191 149.579);
+	--brainless-background: #0f0f10;
+	--brainless-panel: #101010;
+	--brainless-subtle: #202022;
+	--brainless-accent-surface: #27272a;
+	--brainless-foreground: #c0caf5;
+	--brainless-strong: #ededed;
+	--brainless-muted: #949494;
+	--brainless-dim: #565f89;
+	--brainless-border: #3a3a3a;
+	--brainless-user: #3a3a3a;
+	--brainless-claude: #cd694a;
+	--brainless-accent: #7dcfff;
+	--brainless-codex: #5cc2e0;
+	--brainless-success: #4ea96f;
+	--brainless-error: #f7768e;
+	--brainless-warning: #e0af68;
 	--border: oklch(1 0 0 / 10%);
 	--input: oklch(1 0 0 / 15%);
 	--ring: oklch(0.556 0 0);
@@ -95,6 +129,21 @@
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-destructive: var(--destructive);
+	--color-success: var(--success);
+	--color-brainless-background: var(--brainless-background);
+	--color-brainless-panel: var(--brainless-panel);
+	--color-brainless-foreground: var(--brainless-foreground);
+	--color-brainless-strong: var(--brainless-strong);
+	--color-brainless-muted: var(--brainless-muted);
+	--color-brainless-dim: var(--brainless-dim);
+	--color-brainless-border: var(--brainless-border);
+	--color-brainless-user: var(--brainless-user);
+	--color-brainless-claude: var(--brainless-claude);
+	--color-brainless-accent: var(--brainless-accent);
+	--color-brainless-codex: var(--brainless-codex);
+	--color-brainless-success: var(--brainless-success);
+	--color-brainless-error: var(--brainless-error);
+	--color-brainless-warning: var(--brainless-warning);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
@@ -122,6 +171,41 @@
 	}
 	html {
 		@apply font-sans;
+	}
+}
+
+@layer components {
+	.brainless-terminal {
+		--background: var(--brainless-background);
+		--foreground: var(--brainless-foreground);
+		--card: var(--brainless-background);
+		--card-foreground: var(--brainless-foreground);
+		--popover: var(--brainless-panel);
+		--popover-foreground: var(--brainless-foreground);
+		--primary: var(--brainless-accent);
+		--primary-foreground: var(--brainless-background);
+		--secondary: var(--brainless-subtle);
+		--secondary-foreground: var(--brainless-strong);
+		--muted: var(--brainless-subtle);
+		--muted-foreground: var(--brainless-muted);
+		--accent: var(--brainless-accent-surface);
+		--accent-foreground: var(--brainless-strong);
+		--destructive: var(--brainless-error);
+		--success: var(--brainless-success);
+		--border: var(--brainless-border);
+		--input: var(--brainless-border);
+		--ring: var(--brainless-accent);
+		color-scheme: light;
+		background: var(--brainless-background);
+		color: var(--brainless-foreground);
+		transition:
+			background-color 180ms ease,
+			color 180ms ease,
+			border-color 180ms ease;
+	}
+
+	.dark .brainless-terminal {
+		color-scheme: dark;
 	}
 }
 

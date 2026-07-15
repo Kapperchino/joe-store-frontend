@@ -15,7 +15,6 @@
 	import Share2Icon from '@lucide/svelte/icons/share-2';
 	import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
-	import UserIcon from '@lucide/svelte/icons/user';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
 	import JoeStoreMark from '$lib/components/joe-store-mark.svelte';
@@ -23,6 +22,7 @@
 	import ClaudeIcon from './session/[id]/claude-icon.svelte';
 	import CursorIcon from './session/[id]/cursor-icon.svelte';
 	import OpenAIIcon from './session/[id]/openai-icon.svelte';
+	import SessionMessage from '$lib/components/brainless/session-message.svelte';
 	import ToolActivity from './session/[id]/tool-activity.svelte';
 	import type { ToolActivity as ToolActivityData } from './session/[id]/session-view';
 
@@ -216,7 +216,7 @@
 						class="group inline-flex items-center gap-2 rounded-full border bg-background/70 py-1 pr-3 pl-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground"
 					>
 						<span class="flex items-center gap-1.5">
-							<span class="size-1.5 rounded-full bg-green-500"></span>
+							<span class="size-1.5 rounded-full bg-success"></span>
 							Live on the skills registry
 						</span>
 						<ArrowRightIcon
@@ -274,7 +274,7 @@
 
 				<!-- Product preview: the shared link itself -->
 				<div
-					class="preview-card relative min-w-0 overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-xl ring-1 ring-foreground/5"
+					class="brainless-terminal preview-card relative min-w-0 overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-xl ring-1 ring-foreground/5"
 				>
 					<div class="flex items-center gap-3 border-b bg-muted/40 px-4 py-2.5">
 						<div class="flex items-center gap-1.5" aria-hidden="true">
@@ -291,7 +291,7 @@
 						<span
 							class="hidden shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-flex"
 						>
-							<span class="size-1.5 rounded-full bg-green-500"></span>
+							<span class="size-1.5 rounded-full bg-success"></span>
 							Shared
 						</span>
 					</div>
@@ -304,52 +304,33 @@
 						</p>
 					</div>
 
-					<div class="flex flex-col gap-5 px-5 py-5">
-						<article>
-							<header class="mb-3 flex items-center justify-between gap-3">
-								<div class="flex items-center gap-2.5">
-									<span
-										class="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground"
-									>
-										<UserIcon class="size-4" aria-hidden="true" />
-									</span>
-									<h3 class="text-sm font-semibold">User</h3>
-								</div>
-								<time class="text-xs text-muted-foreground" datetime="2026-06-21T10:42:00">
-									10:42 AM
-								</time>
-							</header>
-							<p class="text-sm leading-relaxed sm:pl-9.5">
+					<div class="flex flex-col gap-2 px-5 py-5">
+						<SessionMessage
+							role="user"
+							provider="openai"
+							timestamp="2026-06-21T10:42:00"
+							formattedTimestamp="10:42 AM"
+						>
+							<p class="text-sm leading-relaxed">
 								Add CSV export to the account activity page. Include the active filters and keep the
 								existing layout intact.
 							</p>
-						</article>
+						</SessionMessage>
 
-						<Separator />
-
-						<article>
-							<header class="mb-3 flex items-center justify-between gap-3">
-								<div class="flex items-center gap-2.5">
-									<span
-										class="flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground"
-									>
-										<OpenAIIcon class="size-4" />
-									</span>
-									<h3 class="text-sm font-semibold">Assistant</h3>
-								</div>
-								<time class="text-xs text-muted-foreground" datetime="2026-06-21T10:44:00">
-									10:44 AM
-								</time>
-							</header>
-
-							<div class="flex flex-col gap-4 sm:pl-9.5">
+						<SessionMessage
+							role="assistant"
+							provider="openai"
+							timestamp="2026-06-21T10:44:00"
+							formattedTimestamp="10:44 AM"
+						>
+							<div class="flex flex-col gap-4">
 								<p class="text-sm leading-relaxed">
 									I’ll trace the activity data flow, add the export, and run the project checks.
 								</p>
 
 								<div class="flex flex-col gap-1.5">
 									{#each exampleTools as tool (tool.label)}
-										<ToolActivity {tool} />
+										<ToolActivity {tool} provider="openai" />
 									{/each}
 								</div>
 
@@ -362,7 +343,7 @@
 									</ul>
 								</div>
 							</div>
-						</article>
+						</SessionMessage>
 					</div>
 
 					<div class="flex items-center gap-2 border-t px-5 py-3 text-sm text-muted-foreground">
@@ -641,22 +622,6 @@
 		);
 		opacity: 0.32;
 		pointer-events: none;
-	}
-
-	.metric-cell {
-		background: linear-gradient(
-			180deg,
-			color-mix(in oklch, var(--background), var(--foreground) 1%),
-			color-mix(in oklch, var(--background), var(--chart-2) 3%)
-		);
-		transition:
-			background-color 180ms ease,
-			transform 180ms ease;
-	}
-
-	.metric-cell:hover {
-		transform: translateY(-2px);
-		background: color-mix(in oklch, var(--background), var(--chart-2) 8%);
 	}
 
 	.preview-card {
