@@ -11,10 +11,11 @@
 	<title>Session unavailable | Joe Store</title>
 </svelte:head>
 
-<main class="flex min-h-svh items-center justify-center bg-muted/40 px-4 py-10">
+<main class="terminal-shell flex min-h-svh items-center justify-center px-4 py-10">
 	<Card.Root class="w-full max-w-lg">
 		<Card.Header>
-			<Card.Title>Session unavailable</Card.Title>
+			<span class="terminal-kicker">runtime/error</span>
+			<Card.Title class="terminal-cursor">Session unavailable</Card.Title>
 			<Card.Description>Joe Store could not display this session.</Card.Description>
 		</Card.Header>
 		<Card.Content>

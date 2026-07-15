@@ -252,30 +252,31 @@
 	<meta name="description" content="View all of your uploaded Joe Store sessions." />
 </svelte:head>
 
-<div class="flex min-h-svh flex-col bg-background">
-	<header class="border-b">
+<div class="terminal-shell flex min-h-svh flex-col bg-background">
+	<header class="border-b bg-background/95 backdrop-blur">
 		<div class="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
-			<a class="flex items-center gap-2.5 font-semibold tracking-tight" href={resolve('/')}>
+			<a class="flex items-center gap-2.5 text-sm font-semibold" href={resolve('/')}>
 				<span
-					class="flex size-9 items-center justify-center rounded-xl border bg-background shadow-sm"
+					class="flex size-8 items-center justify-center border border-primary/50 bg-card"
 				>
-					<JoeStoreMark aria-hidden="true" />
+					<JoeStoreMark class="size-5" aria-hidden="true" />
 				</span>
-				<span>Joe Store</span>
+				<span><span class="text-primary">~/</span>joe_store</span>
 			</a>
 			<div class="flex items-center gap-2">
 				<ThemeToggle />
-				<Button href={resolve('/')} variant="outline" size="sm">Home</Button>
+				<Button href={resolve('/')} variant="outline" size="sm">cd ~</Button>
 			</div>
 		</div>
 	</header>
 
 	<main class="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-10 sm:px-6 sm:py-14">
 		<div class="flex flex-col gap-2">
-			<p class="text-sm text-muted-foreground">{userEmail ?? 'Your Joe Store account'}</p>
-			<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">Your sessions</h1>
+			<span class="terminal-kicker">workspace</span>
+			<p class="text-xs text-muted-foreground">user: {userEmail ?? 'authenticated'}</p>
+			<h1 class="terminal-cursor text-3xl font-bold sm:text-4xl">Session index</h1>
 			<p class="max-w-2xl text-muted-foreground">
-				Every AI coding session you upload appears here, with the newest session first.
+				Uploaded agent transcripts, sorted by most recent write time.
 			</p>
 		</div>
 
@@ -319,7 +320,7 @@
 				</Empty.Content>
 			</Empty.Root>
 		{:else}
-			<section class="mt-4" aria-labelledby="session-count">
+			<section class="mt-8" aria-labelledby="session-count">
 				<form class="mb-8 max-w-3xl" onsubmit={submitSearch} role="search">
 					<Field.Group>
 						<Field.Field>
@@ -331,7 +332,7 @@
 								<InputGroup.Input
 									id="session-search"
 									type="search"
-									placeholder="Search message content..."
+									placeholder="grep across session content..."
 									autocomplete="off"
 									bind:value={searchQuery}
 								/>
@@ -342,10 +343,10 @@
 										disabled={searching || !searchQuery.trim()}
 									>
 										{#if searching}<Spinner />{/if}
-										{searching ? 'Searching...' : 'Search'}
+										{searching ? 'Searching...' : 'grep'}
 									</InputGroup.Button>
 									{#if searchedQuery || searchError}
-										<InputGroup.Button type="button" onclick={clearSearch}>Clear</InputGroup.Button>
+										<InputGroup.Button type="button" onclick={clearSearch}>clear</InputGroup.Button>
 									{/if}
 								</InputGroup.Addon>
 							</InputGroup.Root>
@@ -418,7 +419,7 @@
 									</Button>
 								{/snippet}
 								<div
-									class="brainless-terminal mb-3 rounded-[6px] border border-brainless-border p-4"
+							class="brainless-terminal mb-3 border border-brainless-border p-4"
 								>
 									<SessionMessage
 										role={chunk.role ?? 'assistant'}

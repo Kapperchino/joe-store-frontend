@@ -157,53 +157,45 @@
 </svelte:head>
 
 {#snippet eyebrow(text: string)}
-	<span
-		class="inline-flex items-center gap-2 rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground"
-	>
-		{text}
-	</span>
+	<span class="terminal-kicker">{text}</span>
 {/snippet}
 
-<div class="landing-shell flex min-h-svh flex-col bg-background">
-	<header class="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
+<div class="terminal-shell flex min-h-svh flex-col bg-background">
+	<header class="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
 		<div class="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-			<a class="flex items-center gap-2.5 font-semibold" href={resolve('/')}>
+			<a class="flex items-center gap-2.5 text-sm font-semibold" href={resolve('/')}>
 				<span
-					class="flex size-9 items-center justify-center rounded-xl border bg-background shadow-sm"
+					class="flex size-8 items-center justify-center border border-primary/50 bg-card"
 				>
-					<JoeStoreMark aria-hidden="true" />
+					<JoeStoreMark class="size-5" aria-hidden="true" />
 				</span>
-				<span>Joe Store</span>
+				<span><span class="text-primary">~/</span>joe_store</span>
 			</a>
 
 			<nav class="flex items-center gap-1" aria-label="Primary navigation">
 				<a
-					class="hidden rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:block"
-					href="#features">Features</a
+					class="hidden px-3 py-1.5 text-xs text-muted-foreground uppercase transition-colors hover:text-primary sm:block"
+					href="#features">features</a
 				>
 				<a
-					class="hidden rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground sm:block"
-					href="#how-it-works">How it works</a
+					class="hidden px-3 py-1.5 text-xs text-muted-foreground uppercase transition-colors hover:text-primary sm:block"
+					href="#how-it-works">workflow</a
 				>
 				<a
-					class="hidden rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground md:block"
-					href="#security">Security</a
+					class="hidden px-3 py-1.5 text-xs text-muted-foreground uppercase transition-colors hover:text-primary md:block"
+					href="#security">security</a
 				>
 				<ThemeToggle />
-				<Button href={resolve('/user')} size="sm">My sessions</Button>
+				<Button href={resolve('/user')} size="sm">Sessions</Button>
 			</nav>
 		</div>
 	</header>
 
 	<main class="flex-1">
 		<!-- Hero -->
-		<section class="hero-section relative isolate overflow-hidden">
-			<div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-				<div class="hero-aurora absolute inset-x-0 top-0 h-[42rem]"></div>
-				<div class="hero-beams absolute inset-0"></div>
-			</div>
+		<section class="hero-section relative isolate overflow-hidden border-b">
 			<div
-				class="pointer-events-none absolute inset-0 -z-10 bg-dot-grid [mask-image:radial-gradient(ellipse_80%_55%_at_50%_0%,#000_50%,transparent_100%)]"
+				class="pointer-events-none absolute inset-0 -z-10 bg-dot-grid opacity-50 [mask-image:linear-gradient(to_bottom,#000,transparent_85%)]"
 			></div>
 			<div
 				class="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-2 lg:gap-16 lg:py-28"
@@ -213,11 +205,11 @@
 						href={skillUrl}
 						target="_blank"
 						rel="noreferrer"
-						class="group inline-flex items-center gap-2 rounded-full border bg-background/70 py-1 pr-3 pl-2 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground"
+						class="group inline-flex items-center gap-2 border border-primary/40 bg-card px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary"
 					>
 						<span class="flex items-center gap-1.5">
-							<span class="size-1.5 rounded-full bg-success"></span>
-							Live on the skills registry
+							<span class="text-success" aria-hidden="true">●</span>
+							registry_status: online
 						</span>
 						<ArrowRightIcon
 							class="size-3 transition-transform group-hover:translate-x-0.5"
@@ -225,7 +217,7 @@
 						/>
 					</a>
 
-					<h1 class="mt-5 max-w-2xl text-4xl font-semibold text-balance sm:text-6xl">
+					<h1 class="terminal-cursor mt-5 max-w-2xl text-4xl font-bold text-balance sm:text-6xl">
 						Your AI coding sessions, ready to share.
 					</h1>
 					<p
@@ -242,16 +234,16 @@
 							rel="noreferrer"
 							size="lg"
 						>
-							Install the skill
+							./install_skill
 							<ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
 						</Button>
-						<Button href="#how-it-works" variant="outline" size="lg">See how it works</Button>
+						<Button href="#how-it-works" variant="outline" size="lg">cat workflow.md</Button>
 					</div>
 
 					<div class="mt-8 w-full max-w-xl">
-						<p class="mb-2 text-xs font-medium text-muted-foreground">Or install from your terminal</p>
+						<p class="mb-2 text-xs font-medium text-muted-foreground">$ install_from_terminal</p>
 						<div
-							class="command-panel flex items-center gap-3 overflow-hidden rounded-xl border bg-muted/40 px-3 py-2.5 text-left font-mono text-sm"
+							class="command-panel terminal-frame flex items-center gap-3 overflow-hidden px-3 py-2.5 text-left text-sm"
 						>
 							<TerminalIcon class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 							<code class="min-w-0 flex-1 truncate text-foreground">{installCmd}</code>
@@ -274,25 +266,25 @@
 
 				<!-- Product preview: the shared link itself -->
 				<div
-					class="brainless-terminal preview-card relative min-w-0 overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-xl ring-1 ring-foreground/5"
+					class="brainless-terminal preview-card terminal-frame relative min-w-0 overflow-hidden text-card-foreground"
 				>
-					<div class="flex items-center gap-3 border-b bg-muted/40 px-4 py-2.5">
+					<div class="flex items-center gap-3 border-b bg-muted/40 px-4 py-2.5 font-mono">
 						<div class="flex items-center gap-1.5" aria-hidden="true">
-							<span class="size-2.5 rounded-full bg-muted-foreground/25"></span>
-							<span class="size-2.5 rounded-full bg-muted-foreground/25"></span>
-							<span class="size-2.5 rounded-full bg-muted-foreground/25"></span>
+							<span class="text-brainless-error">■</span>
+							<span class="text-brainless-warning">■</span>
+							<span class="text-brainless-success">■</span>
 						</div>
 						<div
-							class="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border bg-background px-2.5 py-1 font-mono text-xs text-muted-foreground"
+							class="flex min-w-0 flex-1 items-center gap-1.5 border bg-background px-2.5 py-1 text-xs text-muted-foreground"
 						>
 							<LockIcon class="size-3 shrink-0" aria-hidden="true" />
 							<span class="truncate">joestore.sh/s/9f3a21c4</span>
 						</div>
 						<span
-							class="hidden shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-flex"
+							class="hidden shrink-0 items-center gap-1.5 border px-2 py-0.5 text-[10px] font-medium text-muted-foreground uppercase sm:inline-flex"
 						>
-							<span class="size-1.5 rounded-full bg-success"></span>
-							Shared
+							<span class="text-success" aria-hidden="true">●</span>
+							shared
 						</span>
 					</div>
 
@@ -355,18 +347,18 @@
 		</section>
 
 		<!-- Works with -->
-		<section class="border-y bg-muted/30">
+		<section class="border-b bg-muted/30">
 			<div
 				class="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-4 py-10 sm:px-6"
 			>
-				<p class="text-xs font-medium text-muted-foreground uppercase">
+				<p class="terminal-kicker">
 					Works with the agents you already use
 				</p>
 				<div class="flex flex-wrap items-center justify-center gap-3">
 					{#each compatibilityItems as agent (agent.name)}
 						{@const Icon = agent.icon}
 						<div
-							class="agent-pill flex items-center gap-2 rounded-full border bg-background/70 px-4 py-2 text-sm font-medium text-foreground/80 shadow-sm backdrop-blur"
+							class="agent-pill flex items-center gap-2 border bg-background/70 px-4 py-2 text-sm font-medium text-foreground/80"
 						>
 							{#if Icon}
 								<Icon class="size-5" />
@@ -392,7 +384,7 @@
 				</div>
 
 				<div
-					class="mt-12 grid gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-2 lg:grid-cols-3"
+					class="mt-12 grid gap-px overflow-hidden border bg-border sm:grid-cols-2 lg:grid-cols-3"
 				>
 					{#each features as feature (feature.title)}
 						{@const Icon = feature.icon}
@@ -400,7 +392,7 @@
 							class="effect-card flex flex-col gap-3 bg-card p-6"
 						>
 							<span
-								class="icon-shell flex size-10 items-center justify-center rounded-lg border bg-background"
+								class="icon-shell flex size-10 items-center justify-center border bg-background text-primary"
 							>
 								<Icon class="size-5" aria-hidden="true" />
 							</span>
@@ -429,11 +421,11 @@
 					{#each steps as step, i (step.title)}
 						{@const Icon = step.icon}
 						<div
-							class="effect-card flex flex-col gap-4 rounded-2xl border bg-card p-6 shadow-sm"
+							class="effect-card terminal-frame flex flex-col gap-4 p-6"
 						>
 							<div class="flex items-center justify-between">
 								<span
-									class="icon-shell flex size-10 items-center justify-center rounded-lg border bg-background"
+									class="icon-shell flex size-10 items-center justify-center border bg-background text-primary"
 								>
 									<Icon class="size-5" aria-hidden="true" />
 								</span>
@@ -444,7 +436,7 @@
 								<p class="text-sm leading-relaxed text-muted-foreground">{step.body}</p>
 							</div>
 							<code
-								class="mt-auto block rounded-lg border bg-muted/50 px-3 py-2.5 font-mono text-xs text-foreground wrap-break-word"
+								class="mt-auto block border bg-muted/50 px-3 py-2.5 text-xs text-foreground wrap-break-word"
 							>
 								{step.command}
 							</code>
@@ -458,10 +450,10 @@
 		<section id="security" class="scroll-mt-20">
 			<div class="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
 				<div
-					class="security-panel relative grid gap-8 overflow-hidden rounded-2xl border bg-card p-8 shadow-sm sm:p-10 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-12"
+					class="security-panel terminal-frame relative grid gap-8 overflow-hidden p-8 sm:p-10 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-12"
 				>
 					<div class="flex flex-col items-start gap-4">
-						<span class="icon-shell flex size-11 items-center justify-center rounded-xl border bg-background">
+						<span class="icon-shell flex size-11 items-center justify-center border bg-background text-primary">
 							<ShieldCheckIcon class="size-5" aria-hidden="true" />
 						</span>
 						{@render eyebrow('Security')}
@@ -476,7 +468,7 @@
 
 					<ul class="grid gap-3">
 						{#each securityPoints as point (point.title)}
-							<li class="flex items-start gap-3 rounded-xl border bg-muted/30 p-4">
+							<li class="flex items-start gap-3 border bg-muted/30 p-4">
 								<CircleCheckIcon class="mt-0.5 size-4 shrink-0 text-foreground" aria-hidden="true" />
 								<div class="flex flex-col gap-0.5">
 									<p class="text-sm font-medium">{point.title}</p>
@@ -492,7 +484,7 @@
 		<!-- Final CTA -->
 		<section class="mx-auto w-full max-w-6xl px-4 pb-20 sm:px-6 sm:pb-28">
 			<div
-				class="cta-panel relative isolate overflow-hidden rounded-3xl border bg-card px-6 py-14 text-center shadow-sm sm:px-12 sm:py-20"
+				class="cta-panel terminal-frame relative isolate overflow-hidden px-6 py-14 text-center sm:px-12 sm:py-20"
 			>
 				<div
 					class="pointer-events-none absolute inset-0 -z-10 bg-dot-grid [mask-image:radial-gradient(ellipse_70%_80%_at_50%_50%,#000_35%,transparent_75%)]"
@@ -508,10 +500,10 @@
 				</p>
 				<div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
 					<Button href={skillUrl} target="_blank" rel="noreferrer" size="lg">
-						Install the skill
+						./install_skill
 						<ArrowRightIcon data-icon="inline-end" aria-hidden="true" />
 					</Button>
-					<Button href={resolve('/user')} variant="outline" size="lg">My sessions</Button>
+					<Button href={resolve('/user')} variant="outline" size="lg">ls ./sessions</Button>
 				</div>
 				<p class="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
 					<ShieldCheckIcon class="size-3.5" aria-hidden="true" />
@@ -557,53 +549,6 @@
 		scroll-behavior: smooth;
 	}
 
-	.landing-shell {
-		background:
-			linear-gradient(
-				180deg,
-				color-mix(in oklch, var(--background), var(--chart-2) 6%) 0%,
-				var(--background) 28rem
-			),
-			var(--background);
-	}
-
-	.hero-aurora {
-		background:
-			linear-gradient(
-				115deg,
-				transparent 4%,
-				color-mix(in oklch, var(--chart-2), transparent 66%) 22%,
-				color-mix(in oklch, var(--chart-4), transparent 72%) 46%,
-				color-mix(in oklch, var(--chart-1), transparent 76%) 68%,
-				transparent 92%
-			),
-			repeating-linear-gradient(
-				100deg,
-				color-mix(in oklch, var(--foreground), transparent 95%) 0 1px,
-				transparent 1px 96px
-			);
-		filter: blur(34px);
-		opacity: 0.28;
-		transform: translateY(-18%);
-	}
-
-	.hero-beams {
-		background:
-			linear-gradient(
-				90deg,
-				color-mix(in oklch, var(--foreground), transparent 94%) 1px,
-				transparent 1px
-			),
-			linear-gradient(
-				180deg,
-				color-mix(in oklch, var(--foreground), transparent 95%) 1px,
-				transparent 1px
-			);
-		background-size: 88px 88px;
-		mask-image: radial-gradient(ellipse 72% 48% at 50% 16%, #000 0%, transparent 72%);
-		opacity: 0.38;
-	}
-
 	.command-panel {
 		position: relative;
 		isolation: isolate;
@@ -612,31 +557,21 @@
 	.command-panel::before {
 		content: '';
 		position: absolute;
-		inset: 0;
-		border-radius: inherit;
-		background: linear-gradient(
-			90deg,
-			color-mix(in oklch, var(--chart-2), transparent 88%),
-			transparent 32%,
-			color-mix(in oklch, var(--chart-4), transparent 90%)
-		);
-		opacity: 0.32;
+		inset: 0 auto 0 0;
+		width: 3px;
+		background: var(--primary);
 		pointer-events: none;
 	}
 
 	.preview-card {
 		transition:
-			transform 260ms ease,
-			box-shadow 260ms ease,
-			border-color 260ms ease;
+			box-shadow 180ms ease,
+			border-color 180ms ease;
 	}
 
 	.preview-card:hover {
-		border-color: color-mix(in oklch, var(--chart-2), var(--border) 60%);
-		box-shadow:
-			0 18px 54px color-mix(in oklch, var(--chart-2), transparent 92%),
-			0 8px 22px color-mix(in oklch, var(--foreground), transparent 94%);
-		transform: translateY(-2px);
+		border-color: var(--primary);
+		box-shadow: 7px 7px 0 color-mix(in oklch, var(--primary), transparent 76%);
 	}
 
 	.agent-pill {
@@ -647,8 +582,8 @@
 	}
 
 	.agent-pill:hover {
-		border-color: color-mix(in oklch, var(--chart-2), var(--border) 64%);
-		background: color-mix(in oklch, var(--background), var(--chart-2) 5%);
+		border-color: var(--primary);
+		background: var(--accent);
 	}
 
 	.effect-card {
@@ -661,21 +596,18 @@
 	}
 
 	.effect-card:hover {
-		border-color: color-mix(in oklch, var(--chart-2), var(--border) 58%);
-		background-color: color-mix(in oklch, var(--card), var(--chart-2) 2%);
-		box-shadow: 0 16px 48px color-mix(in oklch, var(--foreground), transparent 94%);
+		border-color: var(--primary);
+		background-color: color-mix(in oklch, var(--card), var(--primary) 4%);
+		box-shadow: inset 3px 0 0 var(--primary);
 	}
 
 	.icon-shell {
-		box-shadow: inset 0 1px 0 color-mix(in oklch, var(--foreground), transparent 90%);
-		transition:
-			transform 220ms ease,
-			background-color 220ms ease;
+		transition: background-color 180ms ease;
 	}
 
 	.effect-card:hover .icon-shell,
 	.security-panel:hover .icon-shell {
-		background-color: color-mix(in oklch, var(--background), var(--chart-2) 7%);
+		background-color: var(--accent);
 	}
 
 	.security-panel::after,
@@ -685,18 +617,11 @@
 		inset: 0;
 		z-index: 0;
 		pointer-events: none;
-		background:
-			linear-gradient(
-				135deg,
-				color-mix(in oklch, var(--chart-2), transparent 92%),
-				transparent 38%,
-				color-mix(in oklch, var(--chart-4), transparent 92%)
-			),
-			repeating-linear-gradient(
-				90deg,
-				color-mix(in oklch, var(--foreground), transparent 97%) 0 1px,
-				transparent 1px 60px
-			);
+		background: repeating-linear-gradient(
+			0deg,
+			color-mix(in oklch, var(--primary), transparent 96%) 0 1px,
+			transparent 1px 5px
+		);
 	}
 
 	.security-panel > :global(*),

@@ -96,22 +96,23 @@
 	/>
 </svelte:head>
 
-<main class="flex min-h-svh items-center justify-center bg-muted/40 px-4 py-10">
+<main class="terminal-shell flex min-h-svh items-center justify-center px-4 py-10">
 	<section class="flex w-full max-w-md flex-col items-center gap-6" aria-labelledby="login-title">
-		<a class="flex items-center gap-3 font-semibold tracking-tight" href={resolve('/')}>
+		<a class="flex items-center gap-3 text-sm font-semibold" href={resolve('/')}>
 			<span
-				class="flex size-10 items-center justify-center rounded-2xl border bg-background shadow-sm"
+				class="flex size-9 items-center justify-center border border-primary/50 bg-card"
 			>
-				<JoeStoreMark class="size-7" aria-hidden="true" />
+				<JoeStoreMark class="size-6" aria-hidden="true" />
 			</span>
-			<span>Joe Store</span>
+			<span><span class="text-primary">~/</span>joe_store</span>
 		</a>
 
 		<Card.Root class="w-full">
-			<Card.Header class="text-center">
-				<Card.Title id="login-title">Welcome back</Card.Title>
+			<Card.Header>
+				<span class="terminal-kicker">auth/session</span>
+				<Card.Title id="login-title" class="terminal-cursor">Authenticate</Card.Title>
 				<Card.Description>
-					Sign in to save your session on this device.
+					Select an OAuth provider to continue.
 				</Card.Description>
 			</Card.Header>
 
@@ -136,7 +137,7 @@
 						<Spinner data-icon="inline-start" />
 						Connecting to Google...
 					{:else}
-						Continue with Google
+						oauth --provider google
 					{/if}
 				</Button>
 
@@ -152,7 +153,7 @@
 						<Spinner data-icon="inline-start" />
 						Connecting to GitHub...
 					{:else}
-						Continue with GitHub
+						oauth --provider github
 					{/if}
 				</Button>
 			</Card.Content>

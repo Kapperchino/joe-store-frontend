@@ -434,7 +434,7 @@
 		class={cn(
 			'group/block -mx-5 -my-1 scroll-mt-6 px-5 py-1',
 			isSharedBlock(block) &&
-				'rounded-xl bg-accent/30 ring-2 ring-ring ring-offset-4 ring-offset-background'
+				'rounded-sm bg-accent/30 ring-2 ring-ring ring-offset-4 ring-offset-background'
 		)}
 	>
 		<div class="flex items-start gap-2">
@@ -470,7 +470,7 @@
 	<meta name="description" content={`View session ${data.sessionId} in Joe Store.`} />
 </svelte:head>
 
-<main class="min-h-svh bg-background px-4 py-6 sm:px-6 lg:py-10">
+<main class="terminal-shell min-h-svh bg-background px-4 py-6 sm:px-6 lg:py-10">
 	<div class="mx-auto flex w-full max-w-3xl flex-col">
 		<div class="mb-6 flex items-center justify-between">
 			<Button href={resolve('/')} variant="ghost" size="sm" class="-ml-2 text-muted-foreground">
@@ -483,7 +483,8 @@
 		<header class="mb-8">
 			<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div class="min-w-0 flex flex-col gap-3">
-					<h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{data.session.title}</h1>
+					<span class="terminal-kicker">session/{data.sessionId}</span>
+					<h1 class="terminal-cursor text-3xl font-bold sm:text-4xl">{data.session.title}</h1>
 					<div class="flex flex-wrap items-center gap-2">
 						<Badge variant={authTypeBadgeVariant(authType)}>
 							{#if authType === 'public'}
@@ -635,7 +636,7 @@
 			</div>
 
 			<div
-				class="brainless-terminal mt-4 rounded-[6px] border border-brainless-border p-3 shadow-2xl sm:p-5"
+				class="brainless-terminal terminal-frame mt-4 border-brainless-border p-3 sm:p-5"
 			>
 				<SessionHeader
 					provider={data.session.provider}
@@ -693,7 +694,7 @@
 					class={cn(
 						'scroll-mt-6',
 						isSearchMatch(message) &&
-							'rounded-xl bg-accent/30 ring-2 ring-ring ring-offset-4 ring-offset-background'
+							'rounded-sm bg-accent/30 ring-2 ring-ring ring-offset-4 ring-offset-background'
 					)}
 				>
 				{#if collapsed}
