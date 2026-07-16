@@ -200,7 +200,7 @@
 
 	.terminal-frame {
 		border: 1px solid var(--border);
-		border-radius: var(--radius);
+		border-radius: 0;
 		background: var(--card);
 		box-shadow: 5px 5px 0 color-mix(in oklch, var(--foreground), transparent 90%);
 	}
@@ -262,6 +262,7 @@
 	}
 
 	[data-slot="card"] {
+		border-radius: 0;
 		border: 1px solid var(--border);
 		box-shadow: 4px 4px 0 color-mix(in oklch, var(--foreground), transparent 91%);
 	}

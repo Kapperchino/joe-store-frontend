@@ -434,7 +434,7 @@
 		class={cn(
 			'group/block -mx-5 -my-1 scroll-mt-6 px-5 py-1',
 			isSharedBlock(block) &&
-				'rounded-sm bg-accent/30 ring-2 ring-ring ring-offset-4 ring-offset-background'
+				'rounded-none bg-accent/30 ring-2 ring-ring ring-offset-4 ring-offset-background'
 		)}
 	>
 		<div class="flex items-start gap-2">
@@ -694,7 +694,7 @@
 					class={cn(
 						'scroll-mt-6',
 						isSearchMatch(message) &&
-							'rounded-sm bg-accent/30 ring-2 ring-ring ring-offset-4 ring-offset-background'
+							'rounded-none bg-accent/30 ring-2 ring-ring ring-offset-4 ring-offset-background'
 					)}
 				>
 				{#if collapsed}

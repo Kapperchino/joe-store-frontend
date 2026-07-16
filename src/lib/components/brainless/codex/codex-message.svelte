@@ -6,7 +6,7 @@
 </script>
 
 {#if role === 'user'}
-	<div class="flex min-w-0 gap-2 font-mono text-[13px] leading-[1.6] text-brainless-strong">
+	<div class="flex min-w-0 gap-2 rounded-none font-mono text-[13px] leading-[1.6] text-brainless-strong">
 		<span aria-hidden="true" class="shrink-0 font-bold">›</span>
 		<div class="min-w-0 flex-1 break-words">{@render children()}</div>
 	</div>

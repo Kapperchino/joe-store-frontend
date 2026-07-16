@@ -144,7 +144,7 @@
 						{#each question.options as option, oIndex (oIndex)}
 							<div
 								class={cn(
-									'flex items-start gap-2 rounded-sm border px-2.5 py-1.5',
+									'flex items-start gap-2 rounded-none border px-2.5 py-1.5',
 									option.selected ? 'border-primary/50 bg-primary/5' : 'border-border'
 								)}
 							>
@@ -243,7 +243,7 @@
 		{:else if tool.tasks?.length}
 			<div class="flex flex-col gap-2 font-sans">
 				{#each tool.tasks as task (task.id)}
-					<div class="flex flex-col gap-1.5 rounded-sm border border-border p-2.5">
+					<div class="flex flex-col gap-1.5 rounded-none border border-border p-2.5">
 						<div class="flex items-start justify-between gap-2">
 							<div class="min-w-0">
 								<p class="text-xs text-muted-foreground">Task #{task.id}</p>
@@ -289,7 +289,7 @@
 					</p>
 					{#if file.lines.length > 0}
 						<pre
-							class="overflow-x-auto rounded-sm border border-border text-xs leading-5"><code
+							class="overflow-x-auto rounded-none border border-border text-xs leading-5"><code
 								>{#each file.lines as line, index (index)}<span
 										class={cn(
 											'block px-2',

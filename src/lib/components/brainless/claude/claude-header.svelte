@@ -43,7 +43,7 @@
 </script>
 
 <fieldset
-	class="min-w-0 rounded-[6px] border border-brainless-claude px-3 pt-1 pb-3.5 font-mono text-[13px] leading-[1.5] text-brainless-foreground sm:px-4"
+	class="min-w-0 rounded-none border border-brainless-claude px-3 pt-1 pb-3.5 font-mono text-[13px] leading-[1.5] text-brainless-foreground sm:px-4"
 >
 	<legend class="max-w-full truncate px-2 text-brainless-claude">
 		Claude Code

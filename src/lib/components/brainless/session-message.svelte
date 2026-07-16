@@ -27,7 +27,7 @@
 	const terminalRole = $derived(role === 'user' ? 'user' : 'assistant');
 </script>
 
-<article class="group/message min-w-0">
+<article data-message-role={role} class="group/message min-w-0 rounded-none">
 	{#if badge || action}
 		<div class="mb-1 flex min-w-0 items-center justify-between gap-2">
 			<div>{#if badge}{@render badge()}{/if}</div>

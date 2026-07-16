@@ -157,7 +157,7 @@
 	}
 
 	.markdown :global(code) {
-		border-radius: 0.25rem;
+		border-radius: 0;
 		background: var(--muted);
 		padding: 0.125rem 0.25rem;
 		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
@@ -166,7 +166,7 @@
 
 	.markdown :global(pre) {
 		overflow-x: auto;
-		border-radius: var(--radius);
+		border-radius: 0;
 		background: var(--muted);
 		padding: 1rem;
 	}
@@ -195,7 +195,7 @@
 	.markdown :global(img) {
 		max-width: 100%;
 		height: auto;
-		border-radius: var(--radius);
+		border-radius: 0;
 	}
 
 	.markdown :global(hr) {
@@ -204,7 +204,7 @@
 	}
 
 	.markdown :global(mark[data-search-highlight]) {
-		border-radius: 0.2rem;
+		border-radius: 0;
 		background: var(--accent);
 		box-shadow: 0 0 0 1px var(--ring);
 		color: var(--accent-foreground);

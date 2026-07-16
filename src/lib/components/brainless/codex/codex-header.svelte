@@ -15,7 +15,7 @@
 </script>
 
 <div
-	class="min-w-0 rounded-[6px] border border-brainless-border px-3 py-3 font-mono text-[13px] leading-[1.7] text-brainless-strong sm:px-4"
+	class="min-w-0 rounded-none border border-brainless-border px-3 py-3 font-mono text-[13px] leading-[1.7] text-brainless-strong sm:px-4"
 >
 	<div class="flex min-w-0 flex-wrap items-baseline gap-x-2">
 		<span aria-hidden="true" class="shrink-0 text-brainless-muted">{mark}</span>
