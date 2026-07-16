@@ -11,6 +11,9 @@
 				outline: "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
 				ghost: "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
 				link: "text-primary underline-offset-4 hover:underline",
+				openai: "border-provider-openai/40 bg-provider-openai/10 text-provider-openai",
+				claude: "border-brainless-claude/40 bg-brainless-claude/10 text-brainless-claude",
+				cursor: "border-border bg-secondary text-secondary-foreground",
 			},
 		},
 		defaultVariants: {

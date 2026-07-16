@@ -446,7 +446,7 @@
 								</Card.Header>
 								<Card.Content class="flex items-center justify-between gap-3">
 									<div class="flex flex-wrap items-center gap-2">
-										<Badge variant="secondary">{providerLabel(session.provider_type)}</Badge>
+										<Badge variant={session.provider_type}>{providerLabel(session.provider_type)}</Badge>
 										<Badge variant={authTypeBadgeVariant(session.auth_type)}>
 											{#if session.auth_type === 'public'}
 												<GlobeIcon data-icon="inline-start" aria-hidden="true" />

@@ -35,6 +35,7 @@
 	--brainless-claude: oklch(0.5 0.16 40);
 	--brainless-accent: oklch(0.46 0.11 150);
 	--brainless-codex: oklch(0.46 0.11 150);
+	--provider-openai: oklch(0.5 0.105 174);
 	--brainless-success: oklch(0.48 0.12 150);
 	--brainless-error: oklch(0.52 0.2 20);
 	--brainless-warning: oklch(0.5 0.11 75);
@@ -86,6 +87,7 @@
 	--brainless-claude: #cd694a;
 	--brainless-accent: oklch(0.7 0.13 150);
 	--brainless-codex: oklch(0.7 0.13 150);
+	--provider-openai: oklch(0.72 0.12 174);
 	--brainless-success: oklch(0.7 0.13 150);
 	--brainless-error: #f7768e;
 	--brainless-warning: #e0af68;
@@ -141,6 +143,7 @@
 	--color-brainless-claude: var(--brainless-claude);
 	--color-brainless-accent: var(--brainless-accent);
 	--color-brainless-codex: var(--brainless-codex);
+	--color-provider-openai: var(--provider-openai);
 	--color-brainless-success: var(--brainless-success);
 	--color-brainless-error: var(--brainless-error);
 	--color-brainless-warning: var(--brainless-warning);
