@@ -36,7 +36,10 @@
 		)}
 	>
 		<span aria-hidden="true" class={cn('shrink-0', statusClass)}>•</span>
-		<span class="min-w-0 break-words text-brainless-codex">{command}</span>
+		<span
+			class="line-clamp-1 min-w-0 flex-1 whitespace-pre-wrap break-words text-brainless-codex group-open:line-clamp-none"
+			>{command}</span
+		>
 		{#if result}<span class="shrink-0 text-brainless-muted">{result}</span>{/if}
 		{#if children}<span class="shrink-0 text-brainless-dim group-open:hidden">▸</span>{/if}
 	</summary>
